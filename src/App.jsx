@@ -327,15 +327,16 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
       videoRef.current.srcObject=stream;
       await videoRef.current.play();
       if(!window.Tesseract){setScanErr("OCR not loaded — enter manually below.");setScanning(false);return;}
-      const worker=await window.Tesseract.createWorker("eng");
+      setScanHint("Loading OCR...");
+      const worker=await window.Tesseract.createWorker("eng",1,{workerPath:"https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js",langPath:"https://tessdata.projectnaptha.com/4.0.0",corePath:"https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core-simd-lstm.wasm.js"});
       await worker.setParameters({tessedit_char_whitelist:"0123456789",tessedit_pageseg_mode:"7"});
       workerRef.current=worker;
-      setScanHint("Hold steady over the serial number");
+      setScanHint("Point at serial number");
       let lastScan=0;
       const scanLoop=async()=>{
         if(!streamRef.current||!videoRef.current){worker.terminate();return;}
         const now=Date.now();
-        if(now-lastScan>800){
+        if(now-lastScan>1000){
           lastScan=now;
           try{
             const canvas=document.createElement("canvas");
@@ -343,9 +344,11 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
             canvas.width=vw;canvas.height=Math.floor(vh*0.4);
             canvas.getContext("2d").drawImage(videoRef.current,0,Math.floor(vh*0.3),vw,Math.floor(vh*0.4),0,0,vw,Math.floor(vh*0.4));
             const {data:{text}}=await worker.recognize(canvas);
-            const serial=extractSerial(text);
+            const clean=text.trim();
+            setScanHint("Reading: "+(clean.slice(0,30)||"—"));
+            const serial=extractSerial(clean);
             if(serial){stopScan();worker.terminate();handleBarcodeFound(serial);return;}
-          }catch(e){}
+          }catch(e){setScanHint("OCR error: "+e.message);}
         }
         rafRef.current=requestAnimationFrame(scanLoop);
       };
