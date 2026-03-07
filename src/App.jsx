@@ -2,11 +2,10 @@ import React,{useState} from "react";
 // OCR-based serial scanning via Tesseract loaded in index.html
 
 const extractSerial=(text)=>{
-  // Find all runs of 4-10 digits in OCR output, return the most likely one
+  // Find all runs of 4-10 digits in OCR output
+  // Return the FIRST match — OCR reads top-to-bottom, serial tag is above catalog number
   const matches=[...text.replace(/[^0-9\n ]/g," ").matchAll(/\b(\d{4,10})\b/g)].map(m=>m[1]);
   if(!matches.length)return null;
-  // Prefer longer matches (more specific serials)
-  matches.sort((a,b)=>b.length-a.length);
   return matches[0];
 };
 
@@ -326,9 +325,9 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
       img.src=url;
       await new Promise(r=>{img.onload=r;});
       const canvas=document.createElement("canvas");
-      canvas.width=img.width*2;canvas.height=img.height*2;
+      canvas.width=img.width*2;canvas.height=img.height; // top half only at 2x
       const ctx=canvas.getContext("2d");
-      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      ctx.drawImage(img,0,0,img.width,img.height/2,0,0,img.width*2,img.height);
       const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
       const d=imgData.data;
       for(let i=0;i<d.length;i+=4){const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];const v=g>128?255:0;d[i]=d[i+1]=d[i+2]=v;}
