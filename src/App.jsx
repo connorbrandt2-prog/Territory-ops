@@ -1,5 +1,4 @@
 import React,{useState} from "react";
-import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 
 const ACCTS=[
   {id:"connor",name:"Connor Brandt",initials:"CB",color:"#4a9eff",pin:"1234",admin:true},
@@ -125,6 +124,7 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
         if(!videoRef.current)return;
         videoRef.current.srcObject=stream;
         videoRef.current.play();
+        const {BrowserMultiFormatReader} = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.js');
         const reader=new BrowserMultiFormatReader();
         codeReaderRef.current=reader;
         reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
@@ -299,6 +299,7 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
         if(!videoRef.current)return;
         videoRef.current.srcObject=stream;
         videoRef.current.play();
+        const {BrowserMultiFormatReader} = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.js');
         const reader=new BrowserMultiFormatReader();
         codeReaderRef.current=reader;
         reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
@@ -667,6 +668,7 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
         if(!videoRef.current)return;
         videoRef.current.srcObject=stream;
         videoRef.current.play();
+        const {BrowserMultiFormatReader} = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.js');
         const reader=new BrowserMultiFormatReader();
         codeReaderRef.current=reader;
         reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
