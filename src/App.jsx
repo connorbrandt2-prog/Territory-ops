@@ -2,9 +2,10 @@ import React,{useState} from "react";
 // OCR-based serial scanning via Tesseract loaded in index.html
 
 const extractSerial=(text)=>{
-  // Find all runs of 4-10 digits in OCR output
-  // Return the FIRST match — OCR reads top-to-bottom, serial tag is above catalog number
-  const matches=[...text.replace(/[^0-9\n ]/g," ").matchAll(/\b(\d{4,10})\b/g)].map(m=>m[1]);
+  // First try: join consecutive single digits separated by spaces (e.g. "2 0 2 4 8 5 1" → "2024851")
+  const joined=text.replace(/(?<!\d)(\d)(?:\s+(\d))+(?!\d)/g, m=>m.replace(/\s+/g,""));
+  // Then find all runs of 4-10 digits — return the first one (top of image = serial tag)
+  const matches=[...joined.replace(/[^0-9\n ]/g," ").matchAll(/\b(\d{4,10})\b/g)].map(m=>m[1]);
   if(!matches.length)return null;
   return matches[0];
 };
@@ -330,7 +331,8 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
       ctx.drawImage(img,0,0,img.width,img.height/2,0,0,img.width*2,img.height);
       const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
       const d=imgData.data;
-      for(let i=0;i<d.length;i+=4){const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];const v=g>128?255:0;d[i]=d[i+1]=d[i+2]=v;}
+      // Greyscale only — no hard threshold, it breaks digit grouping
+      for(let i=0;i<d.length;i+=4){const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];d[i]=d[i+1]=d[i+2]=g;}
       ctx.putImageData(imgData,0,0);
       URL.revokeObjectURL(url);
       const worker=await window.Tesseract.createWorker("eng");
