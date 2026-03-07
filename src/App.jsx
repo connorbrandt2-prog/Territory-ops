@@ -163,7 +163,7 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
         rafRef.current=requestAnimationFrame(scanLoop);
       };
       rafRef.current=requestAnimationFrame(scanLoop);
-    }catch(e){setScanErr("Camera denied — go to Settings → Safari → Camera → Allow.");setScanning(false);}
+    }catch(e){setScanErr("Error: "+e.name+" — "+e.message);setScanning(false);}
   };
   React.useEffect(()=>()=>{stopScan();},[]);
 
@@ -348,7 +348,7 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
         rafRef.current=requestAnimationFrame(scanLoop);
       };
       rafRef.current=requestAnimationFrame(scanLoop);
-    }catch(e){setScanErr("Camera access denied — go to Settings → Safari → Camera → Allow.");setScanning(false);}
+    }catch(e){setScanErr("Error: "+e.name+" — "+e.message);setScanning(false);}
   };
   React.useEffect(()=>()=>{stopScan();},[]);
 
@@ -736,7 +736,7 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
         rafRef.current=requestAnimationFrame(scanLoop);
       };
       rafRef.current=requestAnimationFrame(scanLoop);
-    }catch(e){setScanErr("Camera access denied — go to Settings → Safari → Camera → Allow.");setScanning(false);}
+    }catch(e){setScanErr("Error: "+e.name+" — "+e.message);setScanning(false);}
   };
   const extractTracking=raw=>{const clean=raw.replace(/\D/g,"");const m=clean.match(/(?:96|94|92|93)\d{18,20}|(\d{12}|\d{15}|\d{20})/);return m?m[0]:raw.slice(0,30);};
   React.useEffect(()=>()=>{stopScan();},[]);
