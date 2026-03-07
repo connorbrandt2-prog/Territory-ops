@@ -126,7 +126,11 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
         if(!videoRef.current)return;
         videoRef.current.srcObject=stream;
         videoRef.current.play();
-        const reader=new BrowserMultiFormatReader();
+        const hints=new Map();
+        const formats=[window.ZXing.BarcodeFormat.DATA_MATRIX,window.ZXing.BarcodeFormat.CODE_128,window.ZXing.BarcodeFormat.CODE_39,window.ZXing.BarcodeFormat.QR_CODE];
+        hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS,formats);
+        hints.set(window.ZXing.DecodeHintType.TRY_HARDER,true);
+        const reader=new BrowserMultiFormatReader(hints);
         codeReaderRef.current=reader;
         reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
           if(result&&!processingRef.current){
@@ -302,7 +306,11 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
         if(!videoRef.current)return;
         videoRef.current.srcObject=stream;
         videoRef.current.play();
-        const reader=new BrowserMultiFormatReader();
+        const hints=new Map();
+        const formats=[window.ZXing.BarcodeFormat.DATA_MATRIX,window.ZXing.BarcodeFormat.CODE_128,window.ZXing.BarcodeFormat.CODE_39,window.ZXing.BarcodeFormat.QR_CODE];
+        hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS,formats);
+        hints.set(window.ZXing.DecodeHintType.TRY_HARDER,true);
+        const reader=new BrowserMultiFormatReader(hints);
         codeReaderRef.current=reader;
         reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
           if(result){
@@ -672,7 +680,11 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
         if(!videoRef.current)return;
         videoRef.current.srcObject=stream;
         videoRef.current.play();
-        const reader=new BrowserMultiFormatReader();
+        const hints=new Map();
+        const formats=[window.ZXing.BarcodeFormat.CODE_128,window.ZXing.BarcodeFormat.CODE_39,window.ZXing.BarcodeFormat.DATA_MATRIX,window.ZXing.BarcodeFormat.QR_CODE];
+        hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS,formats);
+        hints.set(window.ZXing.DecodeHintType.TRY_HARDER,true);
+        const reader=new BrowserMultiFormatReader(hints);
         codeReaderRef.current=reader;
         reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
           if(result){
