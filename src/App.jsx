@@ -118,6 +118,7 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
   const videoRef=React.useRef(null);
   const streamRef=React.useRef(null);
   const rafRef=React.useRef(null);
+  const workerRef=React.useRef(null);
   const processingRef=React.useRef(false);
 
   const stopScan=()=>{
@@ -310,6 +311,7 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
   const streamRef=React.useRef(null);
 
   const rafRef=React.useRef(null);
+  const workerRef=React.useRef(null);
   const stopScan=()=>{
     if(rafRef.current)cancelAnimationFrame(rafRef.current);
     rafRef.current=null;
@@ -699,6 +701,7 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
   const videoRef=React.useRef(null);
   const streamRef=React.useRef(null);
   const rafRef=React.useRef(null);
+  const workerRef=React.useRef(null);
   const stopScan=()=>{
     if(rafRef.current)cancelAnimationFrame(rafRef.current);
     rafRef.current=null;
