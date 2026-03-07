@@ -319,55 +319,34 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
     if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
     streamRef.current=null;setScanning(false);
   };
-  const startScan=async()=>{
-    setScanErr("");setScanHint("Point camera at the barcode on the set");setScanning(true);
+  const processPhoto=async(file)=>{
+    if(!file)return;
+    setScanErr("");setScanHint("Reading...");setScanning(true);
     try{
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
-      streamRef.current=stream;
-      videoRef.current.srcObject=stream;
-      await videoRef.current.play();
-      if(!window.Tesseract){setScanErr("OCR not loaded — enter manually below.");setScanning(false);return;}
-      setScanHint("Loading OCR...");
-      const worker=await window.Tesseract.createWorker("eng",1,{workerPath:"https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js",langPath:"https://tessdata.projectnaptha.com/4.0.0",corePath:"https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core-simd-lstm.wasm.js"});
-      await worker.setParameters({tessedit_char_whitelist:"0123456789",tessedit_pageseg_mode:"7"});
-      workerRef.current=worker;
-      setScanHint("Point at serial number");
-      let lastScan=0;
-      const scanLoop=async()=>{
-        if(!streamRef.current||!videoRef.current){worker.terminate();return;}
-        const now=Date.now();
-        if(now-lastScan>1000){
-          lastScan=now;
-          try{
-            // Crop center strip, scale up 3x, convert to high-contrast B&W
-            const vw=videoRef.current.videoWidth,vh=videoRef.current.videoHeight;
-            const cropY=Math.floor(vh*0.35),cropH=Math.floor(vh*0.3);
-            const scale=3;
-            const canvas=document.createElement("canvas");
-            canvas.width=vw*scale;canvas.height=cropH*scale;
-            const ctx=canvas.getContext("2d");
-            ctx.drawImage(videoRef.current,0,cropY,vw,cropH,0,0,vw*scale,cropH*scale);
-            // Greyscale + threshold for sharp black/white
-            const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
-            const d=imgData.data;
-            for(let i=0;i<d.length;i+=4){
-              const gray=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
-              const val=gray>140?255:0;
-              d[i]=d[i+1]=d[i+2]=val;
-            }
-            ctx.putImageData(imgData,0,0);
-            const {data:{text}}=await worker.recognize(canvas);
-            const clean=text.trim();
-            setScanHint("Reading: "+(clean.replace(/\s/g,"").slice(0,20)||"—"));
-            const serial=extractSerial(clean);
-            if(serial){stopScan();worker.terminate();handleBarcodeFound(serial);return;}
-          }catch(e){setScanHint("OCR error: "+e.message);}
-        }
-        rafRef.current=requestAnimationFrame(scanLoop);
-      };
-      rafRef.current=requestAnimationFrame(scanLoop);
+      if(!window.Tesseract){setScanErr("OCR not loaded — enter manually.");setScanning(false);return;}
+      const url=URL.createObjectURL(file);
+      const img=new Image();
+      img.src=url;
+      await new Promise(r=>{img.onload=r;});
+      const canvas=document.createElement("canvas");
+      canvas.width=img.width*2;canvas.height=img.height*2;
+      const ctx=canvas.getContext("2d");
+      ctx.drawImage(img,0,0,canvas.width,canvas.height);
+      const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+      const d=imgData.data;
+      for(let i=0;i<d.length;i+=4){const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];const v=g>128?255:0;d[i]=d[i+1]=d[i+2]=v;}
+      ctx.putImageData(imgData,0,0);
+      URL.revokeObjectURL(url);
+      const worker=await window.Tesseract.createWorker("eng");
+      await worker.setParameters({tessedit_char_whitelist:"0123456789 ",tessedit_pageseg_mode:"6"});
+      const {data:{text}}=await worker.recognize(canvas);
+      await worker.terminate();
+      const serial=extractSerial(text);
+      if(serial){setScanning(false);setScanHint("");handleBarcodeFound(serial);}
+      else{setScanErr("Couldn't read serial. Got: \""+text.trim().slice(0,40)+"\" — try again or enter manually.");setScanning(false);}
     }catch(e){setScanErr("Error: "+e.name+" — "+e.message);setScanning(false);}
   };
+  const startScan=()=>{photoInputRef.current&&photoInputRef.current.click();};
   React.useEffect(()=>()=>{stopScan();},[]);
 
   const handleBarcodeFound=(id)=>{
@@ -385,19 +364,19 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
 
     {mode==="scan"&&<>
       <div style={{marginBottom:14}}>
-        {scanning?<div style={{borderRadius:10,overflow:"hidden",border:"1px solid #34a87655",background:"#0d0d14",position:"relative",marginBottom:8}}>
-          <video ref={videoRef} style={{width:"100%",maxHeight:200,objectFit:"cover",display:"block"}} playsInline muted/>
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
-            <div style={{width:"75%",height:70,border:"2px solid #34a876",borderRadius:6,boxShadow:"0 0 0 2000px rgba(0,0,0,0.4)"}}/>
+        <input ref={photoInputRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>processPhoto(e.target.files[0])}/>
+        {scanning
+          ?<div style={{height:120,background:"#0d0d14",border:"1px solid #34a87655",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8}}>
+            <div style={{fontSize:22}}>⏳</div>
+            <div style={{fontSize:13,color:"#34a876"}}>{scanHint||"Reading serial number..."}</div>
           </div>
-          {scanHint&&<div style={{position:"absolute",bottom:6,left:0,right:0,textAlign:"center",fontSize:11,color:"#34a876",background:"rgba(0,0,0,0.6)",padding:"4px 0"}}>{scanHint}</div>}
-        </div>:<div onClick={startScan} style={{height:140,background:"#0d0d14",border:"2px dashed #34a87655",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:8}}>
-          <div style={{fontSize:32}}>⬡</div>
-          <div style={{fontSize:13,color:"#34a876",fontWeight:700}}>Tap to scan barcode</div>
-          <div style={{fontSize:10,color:"#444"}}>Uses rear camera</div>
-        </div>}
-        {scanErr&&<div style={{fontSize:11,color:"#e05060",padding:"6px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #e0506033",marginBottom:8}}>{scanErr}</div>}
-        {scanning&&<button onClick={stopScan} style={{width:"100%",padding:"8px",background:"transparent",border:"1px solid #e05060",color:"#e05060",borderRadius:7,cursor:"pointer",fontFamily:"inherit",fontSize:12}}>Stop Scanning</button>}
+          :<div onClick={startScan} style={{height:140,background:"#0d0d14",border:"2px dashed #34a87655",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:8}}>
+            <div style={{fontSize:36}}>📷</div>
+            <div style={{fontSize:13,color:"#34a876",fontWeight:700}}>Take photo of serial number</div>
+            <div style={{fontSize:10,color:"#555"}}>iOS will autofocus for a clean read</div>
+          </div>
+        }
+        {scanErr&&<div style={{fontSize:11,color:"#e05060",padding:"6px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #e0506033",marginBottom:8,marginTop:8}}>{scanErr}</div>}
       </div>
       <div style={{marginTop:12}}>
         <div style={{fontSize:10,color:"#555",letterSpacing:1,marginBottom:6}}>OR ENTER BARCODE MANUALLY</div>
