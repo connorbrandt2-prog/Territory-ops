@@ -111,58 +111,35 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
   const [lastScan,setLastScan]=useState("");
   const [manualId,setManualId]=useState("");
   const [locSearch,setLocSearch]=useState("");
-  const videoRef=React.useRef(null);
-  const streamRef=React.useRef(null);
-  const rafRef=React.useRef(null);
+  const photoInputRef=React.useRef(null);
   const workerRef=React.useRef(null);
-  const processingRef=React.useRef(false);
+  const [pendingNums,setPendingNums]=useState([]);
 
-  const stopScan=()=>{
-    if(rafRef.current)cancelAnimationFrame(rafRef.current);
-    rafRef.current=null;
-    if(workerRef.current){try{workerRef.current.terminate();}catch(e){}workerRef.current=null;}
-    if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
-    streamRef.current=null;setScanning(false);
-  };
-  const startScan=async()=>{
-    setScanErr("");setScanning(true);processingRef.current=false;
+  const processPhoto=async(file)=>{
+    if(!file)return;
+    setScanErr("");setScanning(true);setPendingNums([]);
     try{
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
-      streamRef.current=stream;
-      videoRef.current.srcObject=stream;
-      await videoRef.current.play();
-      if(!window.Tesseract){setScanErr("OCR not loaded — enter manually below.");setScanning(false);return;}
+      if(!window.Tesseract){setScanErr("OCR not loaded — enter manually.");setScanning(false);return;}
+      const url=URL.createObjectURL(file);
+      const img=new Image();
+      img.src=url;
+      await new Promise(r=>{img.onload=r;});
+      const canvas=document.createElement("canvas");
+      canvas.width=img.width;canvas.height=img.height;
+      canvas.getContext("2d").drawImage(img,0,0);
+      URL.revokeObjectURL(url);
       const worker=await window.Tesseract.createWorker("eng");
-      await worker.setParameters({tessedit_char_whitelist:"0123456789",tessedit_pageseg_mode:"13"});
-      workerRef.current=worker;
-      setScanHint("Hold steady over the serial number");
-      let lastScan=0;
-      const scanLoop=async()=>{
-        if(!streamRef.current||!videoRef.current){worker.terminate();return;}
-        const now=Date.now();
-        if(now-lastScan>800&&!processingRef.current){
-          lastScan=now;
-          try{
-            const canvas=document.createElement("canvas");
-            const vw=videoRef.current.videoWidth,vh=videoRef.current.videoHeight;
-            canvas.width=vw;canvas.height=Math.floor(vh*0.4);
-            canvas.getContext("2d").drawImage(videoRef.current,0,Math.floor(vh*0.3),vw,Math.floor(vh*0.4),0,0,vw,Math.floor(vh*0.4));
-            const {data:{text}}=await worker.recognize(canvas);
-            const serial=extractSerial(text);
-            if(serial){
-              processingRef.current=true;
-              addScannedItem(serial);
-              setScanHint("✓ "+serial+" — scan next set");
-              setTimeout(()=>{processingRef.current=false;setScanHint("Hold steady over the serial number");},2000);
-            }
-          }catch(e){}
-        }
-        rafRef.current=requestAnimationFrame(scanLoop);
-      };
-      rafRef.current=requestAnimationFrame(scanLoop);
+      await worker.setParameters({tessedit_pageseg_mode:"11"});
+      const {data:{text}}=await worker.recognize(canvas);
+      await worker.terminate();
+      const nums=extractSerial(text);
+      if(nums&&nums.length>0){
+        if(nums.length===1){addScannedItem(nums[0]);setLastScan("✓ "+nums[0]);setScanning(false);}
+        else{setPendingNums(nums);setScanning(false);}
+      }else{setScanErr("No numbers found — try again or enter manually.");setScanning(false);}
     }catch(e){setScanErr("Error: "+e.name+" — "+e.message);setScanning(false);}
   };
-  React.useEffect(()=>()=>{stopScan();},[]);
+  const startScan=()=>{photoInputRef.current&&photoInputRef.current.click();};
 
   const addScannedItem=(id)=>{
     const trimmed=id.trim();
@@ -221,21 +198,30 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
       <div style={{padding:"6px 10px",background:destLoc?.color+"18",border:"1px solid "+destLoc?.color+"44",borderRadius:6,marginBottom:10,fontSize:11,color:destLoc?.color,fontWeight:700}}>
         → {destLoc?.icon} {destLoc?.label}
       </div>
-      {/* Camera */}
+      {/* Photo capture */}
+      <input ref={photoInputRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{processPhoto(e.target.files[0]);e.target.value="";}}/>
       {scanning
-        ?<div style={{borderRadius:10,overflow:"hidden",border:"1px solid #34a87655",background:"#0d0d14",position:"relative",marginBottom:8}}>
-          <video ref={videoRef} style={{width:"100%",maxHeight:160,objectFit:"cover",display:"block"}} playsInline muted/>
-          <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
-            <div style={{width:"80%",height:56,border:"2px solid #34a876",borderRadius:6,boxShadow:"0 0 0 2000px rgba(0,0,0,0.45)"}}/>
-          </div>
-          {lastScan&&<div style={{position:"absolute",bottom:0,left:0,right:0,textAlign:"center",fontSize:11,color:lastScan.startsWith("✓")?"#34a876":"#e0a020",background:"rgba(0,0,0,0.7)",padding:"5px 0",fontWeight:700}}>{lastScan}</div>}
+        ?<div style={{height:90,background:"#0d0d14",border:"1px solid #34a87655",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,marginBottom:8}}>
+          <div style={{fontSize:20}}>⏳</div>
+          <div style={{fontSize:12,color:"#34a876"}}>Reading serial number...</div>
         </div>
-        :<div onClick={startScan} style={{height:100,background:"#0d0d14",border:"2px dashed #34a87644",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:6,marginBottom:8}}>
-          <div style={{fontSize:22}}>⬡</div>
-          <div style={{fontSize:12,color:"#34a876",fontWeight:700}}>Tap to start scanning</div>
+        :<div onClick={startScan} style={{height:90,background:"#0d0d14",border:"2px dashed #34a87644",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:6,marginBottom:8}}>
+          <div style={{fontSize:22}}>📷</div>
+          <div style={{fontSize:12,color:"#34a876",fontWeight:700}}>Photo the white Globus label</div>
         </div>}
+      {pendingNums.length>0&&<div style={{marginBottom:8}}>
+        <div style={{fontSize:11,color:"#aaa",marginBottom:6}}>Which number is the serial?</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+          {pendingNums.map(n=>(
+            <button key={n} onClick={()=>{addScannedItem(n);setLastScan("✓ "+n);setPendingNums([]);}}
+              style={{padding:"8px 14px",background:"#1a2a1a",border:"2px solid #34a876",borderRadius:8,color:"#34a876",fontFamily:"monospace",fontSize:15,fontWeight:700,cursor:"pointer"}}>
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>}
+      {lastScan&&<div style={{fontSize:12,color:lastScan.startsWith("✓")?"#34a876":"#e0a020",fontWeight:700,marginBottom:6,padding:"5px 10px",background:"#0d0d14",borderRadius:6,border:"1px solid #2a2a3e"}}>{lastScan}</div>}
       {scanErr&&<div style={{fontSize:11,color:"#e05060",padding:"5px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #e0506033",marginBottom:6}}>{scanErr}</div>}
-      {scanning&&<button onClick={stopScan} style={{width:"100%",padding:"6px",background:"transparent",border:"1px solid #555",color:"#555",borderRadius:7,cursor:"pointer",fontFamily:"inherit",fontSize:11,marginBottom:8}}>⏸ Pause Camera</button>}
       {/* Manual entry */}
       <div style={{display:"flex",gap:7,marginBottom:10}}>
         <input value={manualId} onChange={e=>setManualId(e.target.value)} onKeyDown={e=>e.key==="Enter"&&manualId.trim()&&addScannedItem(manualId)} placeholder="Or type barcode + Enter..." style={{flex:1,padding:"7px 10px",background:"#0d0d14",border:"1px solid #2a2a3e",borderRadius:7,color:"#ddd8cc",fontFamily:"inherit",fontSize:12,outline:"none"}}/>
@@ -328,14 +314,13 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
       ctx.drawImage(img,0,0);
       URL.revokeObjectURL(url);
       const worker=await window.Tesseract.createWorker("eng");
-      await worker.setParameters({tessedit_pageseg_mode:"11"}); // sparse text - finds text anywhere
+      await worker.setParameters({tessedit_pageseg_mode:"11"});
       const {data:{text}}=await worker.recognize(canvas);
       await worker.terminate();
-      setScanErr("Raw OCR: "+text.trim().slice(0,80));
       const nums=extractSerial(text);
       if(nums&&nums.length>0){
         setFoundNums(nums);setScanning(false);setScanHint("");
-      }else{setScanErr("Nothing found. Raw: \""+text.trim().slice(0,60)+"\"");setScanning(false);}
+      }else{setScanErr("No numbers found — try again or enter manually.");setScanning(false);}
     }catch(e){setScanErr("Error: "+e.name+" — "+e.message);setScanning(false);}
   };
   const startScan=()=>{photoInputRef.current&&photoInputRef.current.click();};
@@ -433,14 +418,14 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
       <F mb={14}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
           <FL>Set Photo</FL>
-          {regPhotos.length>0&&<label style={{cursor:"pointer"}}><span style={{fontSize:11,color:"#34a876",border:"1px solid #34a87644",borderRadius:6,padding:"3px 10px",fontWeight:700}}>+ Add</span><input type="file" accept="image/*" multiple capture="environment" style={{display:"none"}} onChange={e=>{Array.from(e.target.files).forEach(addRegPhoto);e.target.value="";}} /></label>}
+          {regPhotos.length>0&&<label style={{cursor:"pointer"}}><span style={{fontSize:11,color:"#34a876",border:"1px solid #34a87644",borderRadius:6,padding:"3px 10px",fontWeight:700}}>+ Add</span><input type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>{Array.from(e.target.files).forEach(addRegPhoto);e.target.value="";}} /></label>}
         </div>
         {regPhotos.length===0
           ?<label style={{cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,padding:"20px",background:"#0d0d14",border:"2px dashed #34a87633",borderRadius:10}}>
             <div style={{fontSize:28}}>📷</div>
             <div style={{fontSize:12,color:"#34a876",fontWeight:700}}>Tap to photograph the set</div>
             <div style={{fontSize:10,color:"#444"}}>Reference image for your whole team</div>
-            <input type="file" accept="image/*" multiple capture="environment" style={{display:"none"}} onChange={e=>{Array.from(e.target.files).forEach(addRegPhoto);e.target.value="";}}/>
+            <input type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>{Array.from(e.target.files).forEach(addRegPhoto);e.target.value="";}}/>
           </label>
           :<div style={{display:"flex",flexWrap:"wrap",gap:8}}>
             {regPhotos.map((p,i)=>(
@@ -449,7 +434,7 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
                 <button onClick={()=>setRegPhotos(prev=>prev.filter((_,j)=>j!==i))} style={{position:"absolute",top:-5,right:-5,width:18,height:18,borderRadius:"50%",background:"#e05060",border:"none",color:"#fff",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>×</button>
               </div>
             ))}
-            <label style={{cursor:"pointer",width:80,height:80,background:"#0d0d14",border:"2px dashed #34a87633",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"#34a876"}}>+<input type="file" accept="image/*" multiple capture="environment" style={{display:"none"}} onChange={e=>{Array.from(e.target.files).forEach(addRegPhoto);e.target.value="";}} /></label>
+            <label style={{cursor:"pointer",width:80,height:80,background:"#0d0d14",border:"2px dashed #34a87633",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,color:"#34a876"}}>+<input type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>{Array.from(e.target.files).forEach(addRegPhoto);e.target.value="";}} /></label>
           </div>}
       </F>
       <F mb={16}><FL>Current Location</FL>
@@ -693,60 +678,101 @@ function TaskModal({task,cases,surgeons,currentUser,onSave,onClose}){
 }
 
 function LoanerModal({loaner,currentUser,onSave,onClose}){
-  const [f,sf]=useState(loaner||{id:Date.now(),setName:"",hospital:FACS[0],status:"Received",receivedDate:"",returnedDate:"",assignee:currentUser,notes:"",fedex:"",photo:null});
-  const [scanning,setScanning]=useState(false);
+  const [f,sf]=useState(loaner||{id:Date.now(),setName:"",serial:"",hospital:FACS[0],status:"Received",receivedDate:"",returnedDate:"",assignee:currentUser,notes:"",fedex:"",photo:null});
   const [scanErr,setScanErr]=useState("");
-  const [scanHint,setScanHint]=useState("");
-  const videoRef=React.useRef(null);
-  const streamRef=React.useRef(null);
-  const rafRef=React.useRef(null);
-  const workerRef=React.useRef(null);
-  const stopScan=()=>{
-    if(rafRef.current)cancelAnimationFrame(rafRef.current);
-    rafRef.current=null;
-    if(workerRef.current){try{workerRef.current.terminate();}catch(e){}workerRef.current=null;}
-    if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
-    streamRef.current=null;setScanning(false);
-  };
-  const startScan=async()=>{
-    setScanErr("");setScanHint("Point at a shipping label barcode");setScanning(true);
+  const [scanLoading,setScanLoading]=useState(false);
+  const [pendingNums,setPendingNums]=useState([]);
+  const [trackScanLoading,setTrackScanLoading]=useState(false);
+  const [trackScanErr,setTrackScanErr]=useState("");
+  const [trackPending,setTrackPending]=useState([]);
+  const serialInputRef=React.useRef(null);
+  const trackInputRef=React.useRef(null);
+
+  const extractTracking=raw=>{const clean=raw.replace(/\D/g,"");const m=clean.match(/(?:96|94|92|93)\d{18,20}|(\d{12}|\d{15}|\d{20})/);return m?m[0]:null;};
+
+  const processSerialPhoto=async(file)=>{
+    if(!file)return;
+    setScanErr("");setScanLoading(true);setPendingNums([]);
     try{
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
-      streamRef.current=stream;
-      videoRef.current.srcObject=stream;
-      await videoRef.current.play();
-      if(!window.Tesseract){setScanErr("OCR not loaded — enter manually below.");setScanning(false);return;}
+      if(!window.Tesseract){setScanErr("OCR not loaded — enter manually.");setScanLoading(false);return;}
+      const url=URL.createObjectURL(file);
+      const img=new Image();img.src=url;
+      await new Promise(r=>{img.onload=r;});
+      const canvas=document.createElement("canvas");
+      canvas.width=img.width;canvas.height=img.height;
+      canvas.getContext("2d").drawImage(img,0,0);
+      URL.revokeObjectURL(url);
       const worker=await window.Tesseract.createWorker("eng");
-      await worker.setParameters({tessedit_char_whitelist:"0123456789 ",tessedit_pageseg_mode:"6"});
-      workerRef.current=worker;
-      setScanHint("Point at shipping label barcode number");
-      let lastScan=0;
-      const scanLoop=async()=>{
-        if(!streamRef.current||!videoRef.current){worker.terminate();return;}
-        const now=Date.now();
-        if(now-lastScan>800){
-          lastScan=now;
-          try{
-            const canvas=document.createElement("canvas");
-            canvas.width=videoRef.current.videoWidth;canvas.height=videoRef.current.videoHeight;
-            canvas.getContext("2d").drawImage(videoRef.current,0,0);
-            const {data:{text}}=await worker.recognize(canvas);
-            const t=extractTracking(text.replace(/\s+/g,""));
-            if(t&&t.length>=10){sf(p=>({...p,fedex:t}));setScanHint("✓ "+t);stopScan();worker.terminate();return;}
-          }catch(e){}
-        }
-        rafRef.current=requestAnimationFrame(scanLoop);
-      };
-      rafRef.current=requestAnimationFrame(scanLoop);
-    }catch(e){setScanErr("Error: "+e.name+" — "+e.message);setScanning(false);}
+      await worker.setParameters({tessedit_pageseg_mode:"11"});
+      const {data:{text}}=await worker.recognize(canvas);
+      await worker.terminate();
+      const nums=extractSerial(text);
+      if(nums&&nums.length>0){
+        if(nums.length===1){sf(p=>({...p,serial:nums[0],setName:p.setName||"Set "+nums[0]}));setScanLoading(false);}
+        else{setPendingNums(nums);setScanLoading(false);}
+      }else{setScanErr("No numbers found — enter manually.");setScanLoading(false);}
+    }catch(e){setScanErr("Error: "+e.message);setScanLoading(false);}
   };
-  const extractTracking=raw=>{const clean=raw.replace(/\D/g,"");const m=clean.match(/(?:96|94|92|93)\d{18,20}|(\d{12}|\d{15}|\d{20})/);return m?m[0]:raw.slice(0,30);};
-  React.useEffect(()=>()=>{stopScan();},[]);
+
+  const processTrackPhoto=async(file)=>{
+    if(!file)return;
+    setTrackScanErr("");setTrackScanLoading(true);setTrackPending([]);
+    try{
+      if(!window.Tesseract){setTrackScanErr("OCR not loaded — enter manually.");setTrackScanLoading(false);return;}
+      const url=URL.createObjectURL(file);
+      const img=new Image();img.src=url;
+      await new Promise(r=>{img.onload=r;});
+      const canvas=document.createElement("canvas");
+      canvas.width=img.width;canvas.height=img.height;
+      canvas.getContext("2d").drawImage(img,0,0);
+      URL.revokeObjectURL(url);
+      const worker=await window.Tesseract.createWorker("eng");
+      await worker.setParameters({tessedit_pageseg_mode:"11"});
+      const {data:{text}}=await worker.recognize(canvas);
+      await worker.terminate();
+      const nums=[...text.replace(/[^0-9\n ]/g," ").matchAll(/\b(\d{10,22})\b/g)].map(m=>m[1]);
+      if(nums.length===1){sf(p=>({...p,fedex:nums[0]}));setTrackScanLoading(false);}
+      else if(nums.length>1){setTrackPending(nums);setTrackScanLoading(false);}
+      else{setTrackScanErr("No tracking number found — enter manually.");setTrackScanLoading(false);}
+    }catch(e){setTrackScanErr("Error: "+e.message);setTrackScanLoading(false);}
+  };
+
   const addPhoto=file=>{const r=new FileReader();r.onload=e=>sf(p=>({...p,photo:e.target.result}));r.readAsDataURL(file);};
 
   return(<MW><MT>{loaner?"Edit Loaner":"New Loaner"}</MT>
+
+    {/* Serial Number — scan like inventory */}
+    <F mb={14}>
+      <FL color="#34a876">Set Serial Number</FL>
+      <input ref={serialInputRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{processSerialPhoto(e.target.files[0]);e.target.value="";}}/>
+      {scanLoading
+        ?<div style={{height:70,background:"#0d0d14",border:"1px solid #34a87655",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:8}}>
+          <span style={{fontSize:16}}>⏳</span><span style={{fontSize:12,color:"#34a876"}}>Reading serial...</span>
+        </div>
+        :<div onClick={()=>serialInputRef.current&&serialInputRef.current.click()} style={{height:70,background:"#0d0d14",border:"2px dashed #34a87644",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:10,marginBottom:8}}>
+          <span style={{fontSize:24}}>📷</span>
+          <div><div style={{fontSize:12,color:"#34a876",fontWeight:700}}>Photo the white Globus label</div><div style={{fontSize:10,color:"#444"}}>Or type below</div></div>
+        </div>}
+      {pendingNums.length>0&&<div style={{marginBottom:8}}>
+        <div style={{fontSize:11,color:"#aaa",marginBottom:6}}>Which number is the serial?</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+          {pendingNums.map(n=>(
+            <button key={n} onClick={()=>{sf(p=>({...p,serial:n,setName:p.setName||"Set "+n}));setPendingNums([]);}}
+              style={{padding:"8px 14px",background:"#1a2a1a",border:"2px solid #34a876",borderRadius:8,color:"#34a876",fontFamily:"monospace",fontSize:15,fontWeight:700,cursor:"pointer"}}>{n}</button>
+          ))}
+        </div>
+      </div>}
+      {scanErr&&<div style={{fontSize:11,color:"#e05060",padding:"5px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #e0506033",marginBottom:6}}>{scanErr}</div>}
+      {f.serial?<div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#34a87618",border:"1px solid #34a87644",borderRadius:7,marginBottom:8}}>
+        <span style={{fontFamily:"monospace",fontWeight:700,color:"#34a876",fontSize:15}}>{f.serial}</span>
+        <button onClick={()=>sf(p=>({...p,serial:""}))} style={{marginLeft:"auto",background:"transparent",border:"none",color:"#555",cursor:"pointer",fontSize:16}}>×</button>
+      </div>:null}
+      <Inp value={f.serial||""} onChange={e=>sf(p=>({...p,serial:e.target.value}))} placeholder="Or type serial number manually..."/>
+    </F>
+
     <F><FL>Set / Instrument Name</FL><Inp value={f.setName} onChange={e=>sf(p=>({...p,setName:e.target.value}))} placeholder="e.g. MIS TLIF Set, Pedicle Screw System"/></F>
     <F><FL>Hospital</FL><Sel value={f.hospital} onChange={e=>sf(p=>({...p,hospital:e.target.value}))}>{FACS.map(x=><option key={x}>{x}</option>)}</Sel></F>
+
     <F><FL>Status</FL>
       <div style={{display:"flex",gap:8}}>
         {["Received","Returned","Borrowed"].map(s=>{const active=f.status===s;const col=s==="Received"?"#34a876":s==="Returned"?"#4a9eff":"#e0a020";return(
@@ -754,29 +780,40 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
         );})}
       </div>
     </F>
+
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
       <F mb={0}><FL>Received Date</FL><Inp type="date" value={f.receivedDate||""} onChange={e=>sf(p=>({...p,receivedDate:e.target.value}))}/></F>
-      <F mb={0}><FL>Returned Date</FL><Inp type="date" value={f.returnedDate||""} onChange={e=>sf(p=>({...p,returnedDate:e.target.value}))}/></F>
+      {f.status==="Returned"&&<F mb={0}><FL>Returned Date</FL><Inp type="date" value={f.returnedDate||""} onChange={e=>sf(p=>({...p,returnedDate:e.target.value}))}/></F>}
     </div>
+
     <F mb={12}><FL>Assigned To</FL><AcPick value={f.assignee} onChange={v=>sf(p=>({...p,assignee:v||currentUser}))}/></F>
     <F mb={14}><FL>Notes</FL><TA value={f.notes} onChange={e=>sf(p=>({...p,notes:e.target.value}))} placeholder="Vendor contact, loaner details, special instructions..."/></F>
-    <F mb={14}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-        <FL color="#e0a020">Tracking Number</FL>
-        <button onClick={scanning?stopScan:startScan} style={{fontSize:10,background:scanning?"#3d1520":"#1a1a2e",color:scanning?"#e05060":"#a060e0",border:"1px solid "+(scanning?"#e0506055":"#a060e055"),borderRadius:6,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,display:"flex",alignItems:"center",gap:4}}>
-          {scanning?"✕ Stop":"📷 Scan Barcode"}
-        </button>
-      </div>
-      {scanning&&<div style={{marginBottom:8,borderRadius:10,overflow:"hidden",border:"1px solid #a060e055",background:"#0d0d14",position:"relative"}}>
-        <video ref={videoRef} style={{width:"100%",maxHeight:180,objectFit:"cover",display:"block"}} playsInline muted/>
-        <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
-          <div style={{width:"70%",height:60,border:"2px solid #a060e0",borderRadius:6,boxShadow:"0 0 0 2000px rgba(0,0,0,0.35)"}}/>
+
+    {/* Tracking — only visible when Returned */}
+    {f.status==="Returned"&&<F mb={14}>
+      <FL color="#4a9eff">Return Tracking Number</FL>
+      <input ref={trackInputRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{processTrackPhoto(e.target.files[0]);e.target.value="";}}/>
+      {trackScanLoading
+        ?<div style={{height:60,background:"#0d0d14",border:"1px solid #4a9eff55",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:8}}>
+          <span style={{fontSize:14}}>⏳</span><span style={{fontSize:11,color:"#4a9eff"}}>Reading tracking number...</span>
         </div>
-        {scanHint&&<div style={{position:"absolute",bottom:6,left:0,right:0,textAlign:"center",fontSize:11,color:scanHint.startsWith("✓")?"#34a876":"#ddd8cc",background:"rgba(0,0,0,0.6)",padding:"4px 0"}}>{scanHint}</div>}
+        :<div onClick={()=>trackInputRef.current&&trackInputRef.current.click()} style={{height:60,background:"#0d0d14",border:"2px dashed #4a9eff44",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:10,marginBottom:8}}>
+          <span style={{fontSize:20}}>📷</span>
+          <div><div style={{fontSize:11,color:"#4a9eff",fontWeight:700}}>Photo the shipping label</div><div style={{fontSize:10,color:"#444"}}>Or type below</div></div>
+        </div>}
+      {trackPending.length>0&&<div style={{marginBottom:8}}>
+        <div style={{fontSize:11,color:"#aaa",marginBottom:6}}>Which is the tracking number?</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+          {trackPending.map(n=>(
+            <button key={n} onClick={()=>{sf(p=>({...p,fedex:n}));setTrackPending([]);}}
+              style={{padding:"6px 12px",background:"#0d1a2a",border:"2px solid #4a9eff",borderRadius:8,color:"#4a9eff",fontFamily:"monospace",fontSize:13,fontWeight:700,cursor:"pointer"}}>{n}</button>
+          ))}
+        </div>
       </div>}
-      {scanErr&&<div style={{fontSize:11,color:"#e05060",marginBottom:6,padding:"5px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #e0506033"}}>{scanErr}</div>}
-      <Inp value={f.fedex||""} onChange={e=>sf(p=>({...p,fedex:e.target.value}))} placeholder="Scan above or enter manually"/>
-    </F>
+      {trackScanErr&&<div style={{fontSize:11,color:"#e05060",padding:"5px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #e0506033",marginBottom:6}}>{trackScanErr}</div>}
+      <Inp value={f.fedex||""} onChange={e=>sf(p=>({...p,fedex:e.target.value}))} placeholder="Or enter tracking number manually..."/>
+    </F>}
+
     <F mb={16}>
       <FL color="#9090c0">Shipment Photo</FL>
       {f.photo
@@ -787,9 +824,10 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
         :<label style={{cursor:"pointer",display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:"#111119",border:"1px dashed #2a2a3e",borderRadius:8}}>
           <span style={{fontSize:20}}>📦</span>
           <div><div style={{color:"#aaa",fontWeight:600,fontSize:12}}>Attach shipment photo</div><div style={{fontSize:10,color:"#555",marginTop:2}}>Label, packing slip, or condition on arrival</div></div>
-          <input type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{if(e.target.files[0])addPhoto(e.target.files[0]);}}/>
+          <input type="file" accept="image/*" style={{display:"none"}} onChange={e=>{if(e.target.files[0])addPhoto(e.target.files[0]);}}/>
         </label>}
     </F>
+
     <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><Btn outline color="#555" onClick={onClose}>Cancel</Btn><Btn color="#a060e0" onClick={()=>{if(!f.setName.trim())return;onSave(f)}}>Save</Btn></div>
   </MW>);
 }
@@ -1104,7 +1142,7 @@ function Shell({u,onLogout}){
           <Lbl>Check-In Photos</Lbl>
           <label style={{cursor:"pointer"}}>
             <span style={{fontSize:10,color:"#4a9eff",border:"1px solid #4a9eff44",borderRadius:6,padding:"3px 10px",fontWeight:700}}>+ Add</span>
-            <input type="file" accept="image/*" multiple capture="environment" style={{display:"none"}} onChange={e=>{
+            <input type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>{
               Array.from(e.target.files).forEach(file=>{
                 const reader=new FileReader();
                 reader.onload=ev=>upCase(selCase.id,c=>({...c,checkInPhotos:[...(c.checkInPhotos||[]),{name:file.name,url:ev.target.result}]}));
@@ -1664,7 +1702,7 @@ function Shell({u,onLogout}){
                   <Lbl style={{margin:0}}>Set Photos</Lbl>
                   <label style={{cursor:"pointer"}}>
                     <span style={{fontSize:11,color:"#34a876",border:"1px solid #34a87644",borderRadius:6,padding:"4px 12px",fontWeight:700}}>+ Add Photo</span>
-                    <input type="file" accept="image/*" multiple capture="environment" style={{display:"none"}} onChange={e=>{
+                    <input type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>{
                       Array.from(e.target.files).forEach(file=>{
                         const reader=new FileReader();
                         reader.onload=ev=>setAssets(p=>p.map(a=>a.id!==asset.id?a:{...a,photos:[...(a.photos||[]),{name:file.name,url:ev.target.result,addedBy:u,date:new Date()}]}));
