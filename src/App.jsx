@@ -119,7 +119,7 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
     setScanErr("");setScanning(true);processingRef.current=false;
     try{
       const BrowserMultiFormatReader=window.ZXing?.BrowserMultiFormatReader;
-      if(!BrowserMultiFormatReader){setScanErr("Scanner loading — please try again in a moment.");setScanning(false);return;}
+      if(!BrowserMultiFormatReader){setScanErr("ZXing not loaded. window.ZXing="+JSON.stringify(Object.keys(window.ZXing||{})).slice(0,80));setScanning(false);return;}
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       setTimeout(()=>{
@@ -299,7 +299,7 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
     setScanErr("");setScanHint("Point camera at the barcode on the set");setScanning(true);
     try{
       const BrowserMultiFormatReader=window.ZXing?.BrowserMultiFormatReader;
-      if(!BrowserMultiFormatReader){setScanErr("Scanner loading — please try again in a moment.");setScanning(false);return;}
+      if(!BrowserMultiFormatReader){setScanErr("ZXing not loaded. window.ZXing="+JSON.stringify(Object.keys(window.ZXing||{})).slice(0,80));setScanning(false);return;}
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       setTimeout(()=>{
@@ -673,7 +673,7 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
     setScanErr("");setScanHint("Point at a shipping label barcode");setScanning(true);
     try{
       const BrowserMultiFormatReader=window.ZXing?.BrowserMultiFormatReader;
-      if(!BrowserMultiFormatReader){setScanErr("Scanner loading — please try again in a moment.");setScanning(false);return;}
+      if(!BrowserMultiFormatReader){setScanErr("ZXing not loaded. window.ZXing="+JSON.stringify(Object.keys(window.ZXing||{})).slice(0,80));setScanning(false);return;}
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       setTimeout(()=>{
