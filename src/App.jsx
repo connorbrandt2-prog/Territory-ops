@@ -1,4 +1,5 @@
 import React,{useState} from "react";
+import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
 
 const ACCTS=[
   {id:"connor",name:"Connor Brandt",initials:"CB",color:"#4a9eff",pin:"1234",admin:true},
@@ -106,11 +107,12 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
   const [locSearch,setLocSearch]=useState("");
   const videoRef=React.useRef(null);
   const streamRef=React.useRef(null);
-  const rafRef=React.useRef(null);
+  const codeReaderRef=React.useRef(null);
   const processingRef=React.useRef(false);
 
   const stopScan=()=>{
-    if(rafRef.current)cancelAnimationFrame(rafRef.current);
+    if(codeReaderRef.current){try{codeReaderRef.current.reset();}catch(e){}}
+    codeReaderRef.current=null;
     if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
     streamRef.current=null;setScanning(false);
   };
@@ -119,28 +121,22 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
     try{
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
-      setTimeout(()=>{if(videoRef.current){videoRef.current.srcObject=stream;videoRef.current.play();scanFrames();}},100);
-    }catch(e){setScanErr("Camera denied — use manual entry below.");setScanning(false);}
-  };
-  const scanFrames=()=>{
-    const video=videoRef.current;
-    if(!video||!streamRef.current)return;
-    if(video.readyState<2){rafRef.current=requestAnimationFrame(scanFrames);return;}
-    const canvas=document.createElement("canvas");
-    canvas.width=video.videoWidth;canvas.height=video.videoHeight;
-    canvas.getContext("2d").drawImage(video,0,0);
-    if(window.BarcodeDetector){
-      new window.BarcodeDetector({formats:["code_128","code_39","code_93","codabar","ean_13","ean_8","qr_code","data_matrix","pdf417","itf"]})
-        .detect(canvas).then(codes=>{
-          if(codes.length>0&&!processingRef.current){
+      setTimeout(()=>{
+        if(!videoRef.current)return;
+        videoRef.current.srcObject=stream;
+        videoRef.current.play();
+        const reader=new BrowserMultiFormatReader();
+        codeReaderRef.current=reader;
+        reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
+          if(result&&!processingRef.current){
             processingRef.current=true;
-            const id=codes[0].rawValue.trim();
+            const id=result.getText().trim();
             addScannedItem(id);
-            setTimeout(()=>{processingRef.current=false;},1500); // cooldown between scans
+            setTimeout(()=>{processingRef.current=false;},1500);
           }
-          rafRef.current=requestAnimationFrame(scanFrames);
-        }).catch(()=>{rafRef.current=requestAnimationFrame(scanFrames);});
-    } else {setScanErr("Barcode scanning not supported — use manual entry.");stopScan();}
+        });
+      },200);
+    }catch(e){setScanErr("Camera denied — use manual entry below.");setScanning(false);}
   };
   React.useEffect(()=>()=>{stopScan();},[]);
 
@@ -285,38 +281,35 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
   const addRegPhoto=file=>{const r=new FileReader();r.onload=e=>setRegPhotos(p=>[...p,{name:file.name,url:e.target.result,addedBy:currentUser,date:new Date()}]);r.readAsDataURL(file);};
   const videoRef=React.useRef(null);
   const streamRef=React.useRef(null);
-  const rafRef=React.useRef(null);
+
+  const codeReaderRef=React.useRef(null);
 
   const stopScan=()=>{
-    if(rafRef.current)cancelAnimationFrame(rafRef.current);
+    if(codeReaderRef.current){try{codeReaderRef.current.reset();}catch(e){}}
+    codeReaderRef.current=null;
     if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
     streamRef.current=null;setScanning(false);
   };
   const startScan=async()=>{
-    setScanErr("");setScanHint("Point at the Globus barcode on the set");setScanning(true);
+    setScanErr("");setScanHint("Point camera at the barcode on the set");setScanning(true);
     try{
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
-      setTimeout(()=>{if(videoRef.current){videoRef.current.srcObject=stream;videoRef.current.play();scanFrames();}},100);
-    }catch(e){setScanErr("Camera access denied — enter barcode manually below.");setScanning(false);}
-  };
-  const scanFrames=()=>{
-    const video=videoRef.current;
-    if(!video||!streamRef.current)return;
-    if(video.readyState<2){rafRef.current=requestAnimationFrame(scanFrames);return;}
-    const canvas=document.createElement("canvas");
-    canvas.width=video.videoWidth;canvas.height=video.videoHeight;
-    canvas.getContext("2d").drawImage(video,0,0);
-    if(window.BarcodeDetector){
-      new window.BarcodeDetector({formats:["code_128","code_39","code_93","codabar","ean_13","ean_8","qr_code","data_matrix","pdf417","itf"]})
-        .detect(canvas).then(codes=>{
-          if(codes.length>0){
-            const id=codes[0].rawValue.trim();
+      setTimeout(()=>{
+        if(!videoRef.current)return;
+        videoRef.current.srcObject=stream;
+        videoRef.current.play();
+        const reader=new BrowserMultiFormatReader();
+        codeReaderRef.current=reader;
+        reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
+          if(result){
+            const id=result.getText().trim();
             stopScan();
             handleBarcodeFound(id);
-          } else rafRef.current=requestAnimationFrame(scanFrames);
-        }).catch(()=>{rafRef.current=requestAnimationFrame(scanFrames);});
-    } else {setScanErr("Barcode scanning not supported — enter manually.");stopScan();}
+          }
+        });
+      },200);
+    }catch(e){setScanErr("Camera access denied — enter barcode manually below.");setScanning(false);}
   };
   React.useEffect(()=>()=>{stopScan();},[]);
 
@@ -657,10 +650,11 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
   const [scanHint,setScanHint]=useState("");
   const videoRef=React.useRef(null);
   const streamRef=React.useRef(null);
-  const rafRef=React.useRef(null);
+  const codeReaderRef=React.useRef(null);
 
   const stopScan=()=>{
-    if(rafRef.current)cancelAnimationFrame(rafRef.current);
+    if(codeReaderRef.current){try{codeReaderRef.current.reset();}catch(e){}}
+    codeReaderRef.current=null;
     if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
     streamRef.current=null;setScanning(false);
   };
@@ -669,23 +663,23 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
     try{
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
-      setTimeout(()=>{if(videoRef.current){videoRef.current.srcObject=stream;videoRef.current.play();scanFrames();}},100);
+      setTimeout(()=>{
+        if(!videoRef.current)return;
+        videoRef.current.srcObject=stream;
+        videoRef.current.play();
+        const reader=new BrowserMultiFormatReader();
+        codeReaderRef.current=reader;
+        reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
+          if(result){
+            const raw=result.getText().replace(/\s/g,"");
+            const t=extractTracking(raw);
+            sf(p=>({...p,fedex:t}));
+            setScanHint("✓ "+t);
+            setTimeout(stopScan,800);
+          }
+        });
+      },200);
     }catch(e){setScanErr("Camera access denied — check browser permissions.");setScanning(false);}
-  };
-  const scanFrames=()=>{
-    const video=videoRef.current;
-    if(!video||!streamRef.current)return;
-    if(video.readyState<2){rafRef.current=requestAnimationFrame(scanFrames);return;}
-    const canvas=document.createElement("canvas");
-    canvas.width=video.videoWidth;canvas.height=video.videoHeight;
-    canvas.getContext("2d").drawImage(video,0,0);
-    if(window.BarcodeDetector){
-      new window.BarcodeDetector({formats:["code_128","code_39","code_93","codabar","ean_13","ean_8","qr_code","data_matrix","pdf417","aztec","itf"]})
-        .detect(canvas).then(codes=>{
-          if(codes.length>0){const raw=codes[0].rawValue.replace(/\s/g,""),t=extractTracking(raw);sf(p=>({...p,fedex:t}));setScanHint("✓ "+t);setTimeout(stopScan,800);}
-          else rafRef.current=requestAnimationFrame(scanFrames);
-        }).catch(()=>{rafRef.current=requestAnimationFrame(scanFrames);});
-    }else{setScanErr("Barcode scanning not supported — try Chrome on Android or desktop.");stopScan();}
   };
   const extractTracking=raw=>{const clean=raw.replace(/\D/g,"");const m=clean.match(/(?:96|94|92|93)\d{18,20}|(\d{12}|\d{15}|\d{20})/);return m?m[0]:raw.slice(0,30);};
   React.useEffect(()=>()=>{stopScan();},[]);
