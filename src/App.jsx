@@ -307,17 +307,14 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
   const [locId,setLocId]=useState(allLoc[0]?.id||"");
   const [regPhotos,setRegPhotos]=useState([]);
   const addRegPhoto=file=>{const r=new FileReader();r.onload=e=>setRegPhotos(p=>[...p,{name:file.name,url:e.target.result,addedBy:currentUser,date:new Date()}]);r.readAsDataURL(file);};
-  const videoRef=React.useRef(null);
-  const streamRef=React.useRef(null);
-
+  const photoInputRef=React.useRef(null);
   const rafRef=React.useRef(null);
   const workerRef=React.useRef(null);
   const stopScan=()=>{
     if(rafRef.current)cancelAnimationFrame(rafRef.current);
     rafRef.current=null;
     if(workerRef.current){try{workerRef.current.terminate();}catch(e){}workerRef.current=null;}
-    if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
-    streamRef.current=null;setScanning(false);
+    setScanning(false);
   };
   const processPhoto=async(file)=>{
     if(!file)return;
