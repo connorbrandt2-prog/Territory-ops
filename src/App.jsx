@@ -2,12 +2,8 @@ import React,{useState} from "react";
 // OCR-based serial scanning via Tesseract loaded in index.html
 
 const extractSerial=(text)=>{
-  // First try: join consecutive single digits separated by spaces (e.g. "2 0 2 4 8 5 1" → "2024851")
-  const joined=text.replace(/(?<!\d)(\d)(?:\s+(\d))+(?!\d)/g, m=>m.replace(/\s+/g,""));
-  // Then find all runs of 4-10 digits — return the first one (top of image = serial tag)
-  const matches=[...joined.replace(/[^0-9\n ]/g," ").matchAll(/\b(\d{4,10})\b/g)].map(m=>m[1]);
-  if(!matches.length)return null;
-  return matches[0];
+  // Return all 4-10 digit numbers found, in order
+  return [...text.replace(/[^0-9\n ]/g," ").matchAll(/\b(\d{4,10})\b/g)].map(m=>m[1]);
 };
 
 
@@ -316,9 +312,10 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
     if(workerRef.current){try{workerRef.current.terminate();}catch(e){}workerRef.current=null;}
     setScanning(false);
   };
+  const [foundNums,setFoundNums]=useState([]);
   const processPhoto=async(file)=>{
     if(!file)return;
-    setScanErr("");setScanHint("Reading...");setScanning(true);
+    setScanErr("");setScanHint("Reading...");setScanning(true);setFoundNums([]);
     try{
       if(!window.Tesseract){setScanErr("OCR not loaded — enter manually.");setScanning(false);return;}
       const url=URL.createObjectURL(file);
@@ -326,22 +323,19 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
       img.src=url;
       await new Promise(r=>{img.onload=r;});
       const canvas=document.createElement("canvas");
-      canvas.width=img.width*2;canvas.height=img.height; // top half only at 2x
+      canvas.width=img.width;canvas.height=img.height;
       const ctx=canvas.getContext("2d");
-      ctx.drawImage(img,0,0,img.width,img.height/2,0,0,img.width*2,img.height);
-      const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
-      const d=imgData.data;
-      // Greyscale only — no hard threshold, it breaks digit grouping
-      for(let i=0;i<d.length;i+=4){const g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];d[i]=d[i+1]=d[i+2]=g;}
-      ctx.putImageData(imgData,0,0);
+      ctx.drawImage(img,0,0);
       URL.revokeObjectURL(url);
       const worker=await window.Tesseract.createWorker("eng");
       await worker.setParameters({tessedit_char_whitelist:"0123456789 ",tessedit_pageseg_mode:"6"});
       const {data:{text}}=await worker.recognize(canvas);
       await worker.terminate();
-      const serial=extractSerial(text);
-      if(serial){setScanning(false);setScanHint("");handleBarcodeFound(serial);}
-      else{setScanErr("Couldn't read serial. Got: \""+text.trim().slice(0,40)+"\" — try again or enter manually.");setScanning(false);}
+      const nums=extractSerial(text);
+      if(nums&&nums.length>0){
+        if(nums.length===1){setScanning(false);setScanHint("");handleBarcodeFound(nums[0]);}
+        else{setFoundNums(nums);setScanning(false);setScanHint("");}
+      }else{setScanErr("No numbers found — try again or enter manually.");setScanning(false);}
     }catch(e){setScanErr("Error: "+e.name+" — "+e.message);setScanning(false);}
   };
   const startScan=()=>{photoInputRef.current&&photoInputRef.current.click();};
@@ -375,6 +369,18 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
           </div>
         }
         {scanErr&&<div style={{fontSize:11,color:"#e05060",padding:"6px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #e0506033",marginBottom:8,marginTop:8}}>{scanErr}</div>}
+        {foundNums.length>0&&<div style={{marginTop:10}}>
+          <div style={{fontSize:11,color:"#aaa",marginBottom:8}}>Which number is the serial?</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+            {foundNums.map(n=>(
+              <button key={n} onClick={()=>{setFoundNums([]);handleBarcodeFound(n);}}
+                style={{padding:"10px 18px",background:"#1a2a1a",border:"2px solid #34a876",borderRadius:8,color:"#34a876",fontFamily:"monospace",fontSize:16,fontWeight:700,cursor:"pointer"}}>
+                {n}
+              </button>
+            ))}
+          </div>
+          <div style={{fontSize:10,color:"#555",marginTop:8}}>Tap the serial from the Globus label</div>
+        </div>}
       </div>
       <div style={{marginTop:12}}>
         <div style={{fontSize:10,color:"#555",letterSpacing:1,marginBottom:6}}>OR ENTER BARCODE MANUALLY</div>
