@@ -1,4 +1,4 @@
-json{
+{
   "name": "territory-ops",
   "version": "1.0.0",
   "scripts": {
@@ -15,4 +15,3 @@ json{
     "vite": "^4.4.0"
   }
 }
- 
