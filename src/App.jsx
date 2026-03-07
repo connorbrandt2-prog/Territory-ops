@@ -118,7 +118,9 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
   const startScan=async()=>{
     setScanErr("");setScanning(true);processingRef.current=false;
     try{
-      const {BrowserMultiFormatReader} = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.js');
+      let BrowserMultiFormatReader;
+      try{const mod=await import('https://unpkg.com/@zxing/browser@0.1.4/esm/index.js');BrowserMultiFormatReader=mod.BrowserMultiFormatReader;}
+      catch(e){setScanErr("Scanner failed to load — use manual entry below.");setScanning(false);return;}
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       setTimeout(()=>{
@@ -136,7 +138,7 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
           }
         });
       },200);
-    }catch(e){setScanErr("Camera denied — use manual entry below.");setScanning(false);}
+    }catch(e){setScanErr("Camera denied — go to iPhone Settings → Safari → Camera → Allow.");setScanning(false);}
   };
   React.useEffect(()=>()=>{stopScan();},[]);
 
@@ -293,7 +295,9 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
   const startScan=async()=>{
     setScanErr("");setScanHint("Point camera at the barcode on the set");setScanning(true);
     try{
-      const {BrowserMultiFormatReader} = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.js');
+      let BrowserMultiFormatReader;
+      try{const mod=await import('https://unpkg.com/@zxing/browser@0.1.4/esm/index.js');BrowserMultiFormatReader=mod.BrowserMultiFormatReader;}
+      catch(e){setScanErr("Scanner failed to load — enter barcode manually below.");setScanning(false);return;}
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       setTimeout(()=>{
@@ -310,7 +314,7 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
           }
         });
       },200);
-    }catch(e){setScanErr("Camera access denied — enter barcode manually below.");setScanning(false);}
+    }catch(e){setScanErr("Camera access denied — go to iPhone Settings → Safari → Camera → Allow.");setScanning(false);}
   };
   React.useEffect(()=>()=>{stopScan();},[]);
 
@@ -662,7 +666,9 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
   const startScan=async()=>{
     setScanErr("");setScanHint("Point at a shipping label barcode");setScanning(true);
     try{
-      const {BrowserMultiFormatReader} = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.js');
+      let BrowserMultiFormatReader;
+      try{const mod=await import('https://unpkg.com/@zxing/browser@0.1.4/esm/index.js');BrowserMultiFormatReader=mod.BrowserMultiFormatReader;}
+      catch(e){setScanErr("Scanner failed to load — check your connection.");setScanning(false);return;}
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       setTimeout(()=>{
@@ -681,7 +687,7 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
           }
         });
       },200);
-    }catch(e){setScanErr("Camera access denied — check browser permissions.");setScanning(false);}
+    }catch(e){setScanErr("Camera access denied — go to iPhone Settings → Safari → Camera → Allow.");setScanning(false);}
   };
   const extractTracking=raw=>{const clean=raw.replace(/\D/g,"");const m=clean.match(/(?:96|94|92|93)\d{18,20}|(\d{12}|\d{15}|\d{20})/);return m?m[0]:raw.slice(0,30);};
   React.useEffect(()=>()=>{stopScan();},[]);
