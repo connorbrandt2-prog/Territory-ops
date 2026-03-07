@@ -146,7 +146,7 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
     if(!trimmed)return;
     if(scannedList.find(s=>s.barcodeId===trimmed)){setLastScan("⚠️ Already scanned");return;}
     const existing=assets.find(a=>a.barcodeId===trimmed);
-    const item={barcodeId:trimmed,name:existing?.name||"Set "+trimmed.slice(-6),assetId:existing?.id||null,isNew:!existing,currentLoc:existing?.locationId||null};
+    const item={barcodeId:trimmed,name:existing?.name||"Set "+trimmed,assetId:existing?.id||null,isNew:!existing,currentLoc:existing?.locationId||null};
     setScannedList(p=>[...p,item]);
     setLastScan("✓ "+item.name);
     setManualId("");
@@ -207,13 +207,14 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
         </div>
         :<div onClick={startScan} style={{height:90,background:"#0d0d14",border:"2px dashed #34a87644",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:6,marginBottom:8}}>
           <div style={{fontSize:22}}>📷</div>
-          <div style={{fontSize:12,color:"#34a876",fontWeight:700}}>Photo the white Globus label</div>
+          <div style={{fontSize:12,color:"#34a876",fontWeight:700}}>{scannedList.length>0?"📷 Scan Next Set":"Photo the white Globus label"}</div>
+          {scannedList.length>0&&<div style={{fontSize:10,color:"#555"}}>{scannedList.length} set{scannedList.length!==1?"s":""} scanned — tap to add more</div>}
         </div>}
       {pendingNums.length>0&&<div style={{marginBottom:8}}>
         <div style={{fontSize:11,color:"#aaa",marginBottom:6}}>Which number is the serial?</div>
         <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
           {pendingNums.map(n=>(
-            <button key={n} onClick={()=>{addScannedItem(n);setLastScan("✓ "+n);setPendingNums([]);}}
+            <button key={n} onClick={()=>{addScannedItem(n);setLastScan("✓ "+n);setPendingNums([]);setScanning(false);}}
               style={{padding:"8px 14px",background:"#1a2a1a",border:"2px solid #34a876",borderRadius:8,color:"#34a876",fontFamily:"monospace",fontSize:15,fontWeight:700,cursor:"pointer"}}>
               {n}
             </button>
