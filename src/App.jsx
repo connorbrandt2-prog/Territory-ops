@@ -119,9 +119,13 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
   const startScan=async()=>{
     setScanErr("");setScanning(true);processingRef.current=false;
     try{
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+      streamRef.current=stream;
+      videoRef.current.srcObject=stream;
+      await videoRef.current.play();
       const reader=new BrowserMultiFormatReader();
       codeReaderRef.current=reader;
-      await reader.decodeFromVideoDevice(undefined,videoRef.current,(result,err)=>{
+      reader.decodeFromStream(stream,videoRef.current,(result,err)=>{
         if(result&&!processingRef.current){
           processingRef.current=true;
           const id=result.getText().trim();
@@ -129,7 +133,7 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
           setTimeout(()=>{processingRef.current=false;},1500);
         }
       });
-    }catch(e){setScanErr("Camera denied — go to iPhone Settings → Safari → Camera → Allow.");setScanning(false);}
+    }catch(e){setScanErr("Camera denied — go to Settings → Safari → Camera → Allow.");setScanning(false);}
   };
   React.useEffect(()=>()=>{stopScan();},[]);
 
@@ -286,16 +290,20 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
   const startScan=async()=>{
     setScanErr("");setScanHint("Point camera at the barcode on the set");setScanning(true);
     try{
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+      streamRef.current=stream;
+      videoRef.current.srcObject=stream;
+      await videoRef.current.play();
       const reader=new BrowserMultiFormatReader();
       codeReaderRef.current=reader;
-      await reader.decodeFromVideoDevice(undefined,videoRef.current,(result,err)=>{
+      reader.decodeFromStream(stream,videoRef.current,(result,err)=>{
         if(result){
           const id=result.getText().trim();
           stopScan();
           handleBarcodeFound(id);
         }
       });
-    }catch(e){setScanErr("Camera access denied — go to iPhone Settings → Safari → Camera → Allow.");setScanning(false);}
+    }catch(e){setScanErr("Camera access denied — go to Settings → Safari → Camera → Allow.");setScanning(false);}
   };
   React.useEffect(()=>()=>{stopScan();},[]);
 
@@ -647,9 +655,13 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
   const startScan=async()=>{
     setScanErr("");setScanHint("Point at a shipping label barcode");setScanning(true);
     try{
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+      streamRef.current=stream;
+      videoRef.current.srcObject=stream;
+      await videoRef.current.play();
       const reader=new BrowserMultiFormatReader();
       codeReaderRef.current=reader;
-      await reader.decodeFromVideoDevice(undefined,videoRef.current,(result,err)=>{
+      reader.decodeFromStream(stream,videoRef.current,(result,err)=>{
         if(result){
           const raw=result.getText().replace(/\s/g,"");
           const t=extractTracking(raw);
@@ -658,7 +670,7 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
           setTimeout(stopScan,800);
         }
       });
-    }catch(e){setScanErr("Camera access denied — go to iPhone Settings → Safari → Camera → Allow.");setScanning(false);}
+    }catch(e){setScanErr("Camera access denied — go to Settings → Safari → Camera → Allow.");setScanning(false);}
   };
   const extractTracking=raw=>{const clean=raw.replace(/\D/g,"");const m=clean.match(/(?:96|94|92|93)\d{18,20}|(\d{12}|\d{15}|\d{20})/);return m?m[0]:raw.slice(0,30);};
   React.useEffect(()=>()=>{stopScan();},[]);
