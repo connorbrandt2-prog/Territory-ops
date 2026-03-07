@@ -1,5 +1,15 @@
 import React,{useState} from "react";
-// barcode scanning via zbar-wasm loaded in index.html
+// OCR-based serial scanning via Tesseract loaded in index.html
+
+const extractSerial=(text)=>{
+  // Find all runs of 4-10 digits in OCR output, return the most likely one
+  const matches=[...text.replace(/[^0-9\n ]/g," ").matchAll(/\b(\d{4,10})\b/g)].map(m=>m[1]);
+  if(!matches.length)return null;
+  // Prefer longer matches (more specific serials)
+  matches.sort((a,b)=>b.length-a.length);
+  return matches[0];
+};
+
 
 const ACCTS=[
   {id:"connor",name:"Connor Brandt",initials:"CB",color:"#4a9eff",pin:"1234",admin:true},
@@ -113,6 +123,7 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
   const stopScan=()=>{
     if(rafRef.current)cancelAnimationFrame(rafRef.current);
     rafRef.current=null;
+    if(workerRef.current){try{workerRef.current.terminate();}catch(e){}workerRef.current=null;}
     if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
     streamRef.current=null;setScanning(false);
   };
@@ -123,20 +134,32 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
       streamRef.current=stream;
       videoRef.current.srcObject=stream;
       await videoRef.current.play();
+      if(!window.Tesseract){setScanErr("OCR not loaded — enter manually below.");setScanning(false);return;}
+      const worker=await window.Tesseract.createWorker("eng");
+      await worker.setParameters({tessedit_char_whitelist:"0123456789",tessedit_pageseg_mode:"7"});
+      workerRef.current=worker;
+      setScanHint("Hold steady over the serial number");
+      let lastScan=0;
       const scanLoop=async()=>{
-        if(!streamRef.current||!videoRef.current)return;
-        try{
-          const canvas=document.createElement("canvas");
-          canvas.width=videoRef.current.videoWidth;canvas.height=videoRef.current.videoHeight;
-          canvas.getContext("2d").drawImage(videoRef.current,0,0);
-          const syms=await window.zbarWasm.scanImageData(canvas.getContext("2d").getImageData(0,0,canvas.width,canvas.height));
-          if(syms&&syms.length>0&&!processingRef.current){
-            processingRef.current=true;
-            const id=syms[0].decode().trim();
-            addScannedItem(id);
-            setTimeout(()=>{processingRef.current=false;},1500);
-          }
-        }catch(e){}
+        if(!streamRef.current||!videoRef.current){worker.terminate();return;}
+        const now=Date.now();
+        if(now-lastScan>800&&!processingRef.current){
+          lastScan=now;
+          try{
+            const canvas=document.createElement("canvas");
+            const vw=videoRef.current.videoWidth,vh=videoRef.current.videoHeight;
+            canvas.width=vw;canvas.height=Math.floor(vh*0.4);
+            canvas.getContext("2d").drawImage(videoRef.current,0,Math.floor(vh*0.3),vw,Math.floor(vh*0.4),0,0,vw,Math.floor(vh*0.4));
+            const {data:{text}}=await worker.recognize(canvas);
+            const serial=extractSerial(text);
+            if(serial){
+              processingRef.current=true;
+              addScannedItem(serial);
+              setScanHint("✓ "+serial+" — scan next set");
+              setTimeout(()=>{processingRef.current=false;setScanHint("Hold steady over the serial number");},2000);
+            }
+          }catch(e){}
+        }
         rafRef.current=requestAnimationFrame(scanLoop);
       };
       rafRef.current=requestAnimationFrame(scanLoop);
@@ -290,6 +313,7 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
   const stopScan=()=>{
     if(rafRef.current)cancelAnimationFrame(rafRef.current);
     rafRef.current=null;
+    if(workerRef.current){try{workerRef.current.terminate();}catch(e){}workerRef.current=null;}
     if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
     streamRef.current=null;setScanning(false);
   };
@@ -300,20 +324,27 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
       streamRef.current=stream;
       videoRef.current.srcObject=stream;
       await videoRef.current.play();
+      if(!window.Tesseract){setScanErr("OCR not loaded — enter manually below.");setScanning(false);return;}
+      const worker=await window.Tesseract.createWorker("eng");
+      await worker.setParameters({tessedit_char_whitelist:"0123456789",tessedit_pageseg_mode:"7"});
+      workerRef.current=worker;
+      setScanHint("Hold steady over the serial number");
+      let lastScan=0;
       const scanLoop=async()=>{
-        if(!streamRef.current||!videoRef.current)return;
-        try{
-          const canvas=document.createElement("canvas");
-          canvas.width=videoRef.current.videoWidth;canvas.height=videoRef.current.videoHeight;
-          canvas.getContext("2d").drawImage(videoRef.current,0,0);
-          const syms=await window.zbarWasm.scanImageData(canvas.getContext("2d").getImageData(0,0,canvas.width,canvas.height));
-          if(syms&&syms.length>0){
-            const id=syms[0].decode().trim();
-            stopScan();
-            handleBarcodeFound(id);
-            return;
-          }
-        }catch(e){}
+        if(!streamRef.current||!videoRef.current){worker.terminate();return;}
+        const now=Date.now();
+        if(now-lastScan>800){
+          lastScan=now;
+          try{
+            const canvas=document.createElement("canvas");
+            const vw=videoRef.current.videoWidth,vh=videoRef.current.videoHeight;
+            canvas.width=vw;canvas.height=Math.floor(vh*0.4);
+            canvas.getContext("2d").drawImage(videoRef.current,0,Math.floor(vh*0.3),vw,Math.floor(vh*0.4),0,0,vw,Math.floor(vh*0.4));
+            const {data:{text}}=await worker.recognize(canvas);
+            const serial=extractSerial(text);
+            if(serial){stopScan();worker.terminate();handleBarcodeFound(serial);return;}
+          }catch(e){}
+        }
         rafRef.current=requestAnimationFrame(scanLoop);
       };
       rafRef.current=requestAnimationFrame(scanLoop);
@@ -671,6 +702,7 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
   const stopScan=()=>{
     if(rafRef.current)cancelAnimationFrame(rafRef.current);
     rafRef.current=null;
+    if(workerRef.current){try{workerRef.current.terminate();}catch(e){}workerRef.current=null;}
     if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
     streamRef.current=null;setScanning(false);
   };
@@ -681,21 +713,26 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
       streamRef.current=stream;
       videoRef.current.srcObject=stream;
       await videoRef.current.play();
+      if(!window.Tesseract){setScanErr("OCR not loaded — enter manually below.");setScanning(false);return;}
+      const worker=await window.Tesseract.createWorker("eng");
+      await worker.setParameters({tessedit_char_whitelist:"0123456789 ",tessedit_pageseg_mode:"6"});
+      workerRef.current=worker;
+      setScanHint("Point at shipping label barcode number");
+      let lastScan=0;
       const scanLoop=async()=>{
-        if(!streamRef.current||!videoRef.current)return;
-        try{
-          const canvas=document.createElement("canvas");
-          canvas.width=videoRef.current.videoWidth;canvas.height=videoRef.current.videoHeight;
-          canvas.getContext("2d").drawImage(videoRef.current,0,0);
-          const syms=await window.zbarWasm.scanImageData(canvas.getContext("2d").getImageData(0,0,canvas.width,canvas.height));
-          if(syms&&syms.length>0){
-            const raw=syms[0].decode().replace(/\s/g,"");
-            const t=extractTracking(raw);
-            sf(p=>({...p,fedex:t}));
-            setScanHint("✓ "+t);
-            stopScan();return;
-          }
-        }catch(e){}
+        if(!streamRef.current||!videoRef.current){worker.terminate();return;}
+        const now=Date.now();
+        if(now-lastScan>800){
+          lastScan=now;
+          try{
+            const canvas=document.createElement("canvas");
+            canvas.width=videoRef.current.videoWidth;canvas.height=videoRef.current.videoHeight;
+            canvas.getContext("2d").drawImage(videoRef.current,0,0);
+            const {data:{text}}=await worker.recognize(canvas);
+            const t=extractTracking(text.replace(/\s+/g,""));
+            if(t&&t.length>=10){sf(p=>({...p,fedex:t}));setScanHint("✓ "+t);stopScan();worker.terminate();return;}
+          }catch(e){}
+        }
         rafRef.current=requestAnimationFrame(scanLoop);
       };
       rafRef.current=requestAnimationFrame(scanLoop);
