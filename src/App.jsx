@@ -55,7 +55,7 @@ const Sel=({value,onChange,children,style})=><select value={value||""} onChange=
 const Btn=({children,onClick,color,text,outline,small,style})=>{const c=color||"#4a9eff",t=text||"#fff";return<button onClick={onClick} style={{padding:small?"5px 11px":"8px 17px",background:outline?"transparent":c,color:outline?c:t,border:"1px solid "+c,borderRadius:7,fontFamily:"inherit",fontSize:small?11:13,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap",...style}}>{children}</button>};
 const Dot=({id,size})=>{const sz=size||22,a=abt(id);return<div title={a.name} style={{width:sz,height:sz,borderRadius:"50%",background:a.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:sz*0.36,color:"#0d0d14",fontWeight:800,flexShrink:0}}>{a.initials}</div>};
 const SH=({color,label,count})=><div style={{fontSize:9,letterSpacing:"2px",color,textTransform:"uppercase",marginBottom:10,display:"flex",alignItems:"center",gap:8}}><div style={{width:6,height:6,borderRadius:"50%",background:color}}/>{label}{count!==undefined&&<span style={{background:color+"22",color,borderRadius:20,padding:"1px 7px",fontSize:10}}>{count}</span>}</div>;
-const MW=({children,noScroll})=><div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:16}}><div style={{background:"#13131e",borderRadius:18,padding:24,border:"1px solid #2a2a3e",boxShadow:"0 24px 60px rgba(0,0,0,0.8)",maxHeight:"88vh",overflowY:noScroll?"hidden":"auto",display:noScroll?"flex":undefined,flexDirection:noScroll?"column":undefined,width:"100%",maxWidth:520}}>{children}</div></div>;
+const MW=({children})=><div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:16}}><div style={{background:"#13131e",borderRadius:18,padding:24,border:"1px solid #2a2a3e",boxShadow:"0 24px 60px rgba(0,0,0,0.8)",maxHeight:"88vh",overflowY:"auto",width:"100%",maxWidth:520}}>{children}</div></div>;
 const MT=({children})=><div style={{fontSize:15,fontWeight:700,color:"#ddd8cc",marginBottom:16}}>{children}</div>;
 const FL=({children,color})=><div style={{fontSize:9,letterSpacing:"1.5px",color:color||"#555",textTransform:"uppercase",marginBottom:4}}>{children}</div>;
 const F=({children,mb})=><div style={{marginBottom:mb!==undefined?mb:11}}>{children}</div>;
@@ -164,7 +164,7 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
     onComplete(moves,newAssets);
   };
 
-  return(<MW noScroll><MT>Bulk Scan & Move</MT>
+  return(<MW><MT>Bulk Scan & Move</MT>
 
     {/* Step indicator */}
     <div style={{display:"flex",gap:0,marginBottom:18,borderRadius:8,overflow:"hidden",border:"1px solid #2a2a3e"}}>
@@ -194,59 +194,56 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
     </>}
 
     {/* STEP 2 — Scan sets */}
-    {step==="scan"&&<div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
+    {step==="scan"&&<>
       <div style={{padding:"6px 10px",background:destLoc?.color+"18",border:"1px solid "+destLoc?.color+"44",borderRadius:6,marginBottom:8,fontSize:11,color:destLoc?.color,fontWeight:700}}>
         → {destLoc?.icon} {destLoc?.label}
       </div>
-      {/* Scrollable middle section */}
-      <div style={{overflowY:"auto",flex:1,minHeight:0}}>
-        <input ref={photoInputRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{processPhoto(e.target.files[0]);e.target.value="";}}/>
-        {scanning
-          ?<div style={{height:60,background:"#0d0d14",border:"1px solid #34a87655",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:6}}>
-            <span style={{fontSize:16}}>⏳</span><span style={{fontSize:12,color:"#34a876"}}>Reading...</span>
-          </div>
-          :<div onClick={startScan} style={{height:60,background:"#0d0d14",border:"2px dashed #34a87644",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:10,marginBottom:6}}>
-            <span style={{fontSize:20}}>📷</span>
-            <span style={{fontSize:12,color:"#34a876",fontWeight:700}}>{scannedList.length>0?"Scan Next Set":"Photo the Globus label"}</span>
-          </div>}
-        {pendingNums.length>0&&<div style={{marginBottom:8}}>
-          <div style={{fontSize:11,color:"#aaa",marginBottom:6}}>Which number is the serial?</div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-            {pendingNums.map(n=>(
-              <button key={n} onClick={()=>{addScannedItem(n);setLastScan("✓ "+n);setPendingNums([]);setScanning(false);}}
-                style={{padding:"8px 14px",background:"#1a2a1a",border:"2px solid #34a876",borderRadius:8,color:"#34a876",fontFamily:"monospace",fontSize:15,fontWeight:700,cursor:"pointer"}}>
-                {n}
-              </button>
-            ))}
-          </div>
+      {/* Review button at top so it's always visible */}
+      <div style={{display:"flex",gap:8,marginBottom:10}}>
+        <Btn outline color="#555" onClick={()=>setStep("location")}>← Back</Btn>
+        <Btn color="#34a876" onClick={()=>setStep("confirm")} style={{flex:1,opacity:scannedList.length===0?0.4:1}}>Review {scannedList.length} Set{scannedList.length!==1?"s":""} →</Btn>
+      </div>
+      <input ref={photoInputRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{processPhoto(e.target.files[0]);e.target.value="";}}/>
+      {scanning
+        ?<div style={{height:60,background:"#0d0d14",border:"1px solid #34a87655",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:6}}>
+          <span style={{fontSize:16}}>⏳</span><span style={{fontSize:12,color:"#34a876"}}>Reading...</span>
+        </div>
+        :<div onClick={startScan} style={{height:60,background:"#0d0d14",border:"2px dashed #34a87644",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:10,marginBottom:6}}>
+          <span style={{fontSize:20}}>📷</span>
+          <span style={{fontSize:12,color:"#34a876",fontWeight:700}}>{scannedList.length>0?"Scan Next Set":"Photo the Globus label"}</span>
         </div>}
-        {lastScan&&<div style={{fontSize:12,color:lastScan.startsWith("✓")?"#34a876":"#e0a020",fontWeight:700,marginBottom:6,padding:"5px 10px",background:"#0d0d14",borderRadius:6,border:"1px solid #2a2a3e"}}>{lastScan}</div>}
-        {scanErr&&<div style={{fontSize:11,color:"#e05060",padding:"5px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #e0506033",marginBottom:6}}>{scanErr}</div>}
-        <div style={{display:"flex",gap:7,marginBottom:8}}>
-          <input value={manualId} onChange={e=>setManualId(e.target.value)} onKeyDown={e=>e.key==="Enter"&&manualId.trim()&&addScannedItem(manualId)} placeholder="Or type barcode + Enter..." style={{flex:1,padding:"7px 10px",background:"#0d0d14",border:"1px solid #2a2a3e",borderRadius:7,color:"#ddd8cc",fontFamily:"inherit",fontSize:12,outline:"none"}}/>
-          <Btn color="#34a876" small onClick={()=>manualId.trim()&&addScannedItem(manualId)}>Add</Btn>
+      {pendingNums.length>0&&<div style={{marginBottom:8}}>
+        <div style={{fontSize:11,color:"#aaa",marginBottom:6}}>Which number is the serial?</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+          {pendingNums.map(n=>(
+            <button key={n} onClick={()=>{addScannedItem(n);setLastScan("✓ "+n);setPendingNums([]);}}
+              style={{padding:"8px 14px",background:"#1a2a1a",border:"2px solid #34a876",borderRadius:8,color:"#34a876",fontFamily:"monospace",fontSize:15,fontWeight:700,cursor:"pointer"}}>
+              {n}
+            </button>
+          ))}
         </div>
-        <div style={{fontSize:9,color:"#555",letterSpacing:"1.5px",marginBottom:4,display:"flex",justifyContent:"space-between"}}>
-          <span>SCANNED SETS</span><span style={{color:scannedList.length>0?"#34a876":"#555"}}>{scannedList.length} SETS</span>
-        </div>
-        {scannedList.length===0&&<div style={{fontSize:11,color:"#333",textAlign:"center",padding:"12px 0"}}>No sets scanned yet</div>}
-        {scannedList.map((s,i)=>(
-          <div key={s.barcodeId} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:i%2===0?"#0d0d14":"#111119",borderRadius:6,marginBottom:3}}>
-            <div style={{width:7,height:7,borderRadius:"50%",background:s.isNew?"#e0a020":"#34a876",flexShrink:0}}/>
-            <div style={{flex:1}}>
-              <div style={{fontSize:12,color:"#ddd8cc"}}>{s.name}</div>
-              <div style={{fontSize:9,color:"#444",fontFamily:"monospace"}}>{s.barcodeId}{s.isNew&&<span style={{color:"#e0a020",marginLeft:6}}>NEW</span>}</div>
-            </div>
-            <button onClick={()=>removeItem(s.barcodeId)} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:14,padding:0}}>×</button>
+      </div>}
+      {lastScan&&<div style={{fontSize:12,color:lastScan.startsWith("✓")?"#34a876":"#e0a020",fontWeight:700,marginBottom:6,padding:"5px 10px",background:"#0d0d14",borderRadius:6,border:"1px solid #2a2a3e"}}>{lastScan}</div>}
+      {scanErr&&<div style={{fontSize:11,color:"#e05060",padding:"5px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #e0506033",marginBottom:6}}>{scanErr}</div>}
+      <div style={{display:"flex",gap:7,marginBottom:8}}>
+        <input value={manualId} onChange={e=>setManualId(e.target.value)} onKeyDown={e=>e.key==="Enter"&&manualId.trim()&&addScannedItem(manualId)} placeholder="Or type barcode + Enter..." style={{flex:1,padding:"7px 10px",background:"#0d0d14",border:"1px solid #2a2a3e",borderRadius:7,color:"#ddd8cc",fontFamily:"inherit",fontSize:12,outline:"none"}}/>
+        <Btn color="#34a876" small onClick={()=>manualId.trim()&&addScannedItem(manualId)}>Add</Btn>
+      </div>
+      <div style={{fontSize:9,color:"#555",letterSpacing:"1.5px",marginBottom:4,display:"flex",justifyContent:"space-between"}}>
+        <span>SCANNED SETS</span><span style={{color:scannedList.length>0?"#34a876":"#555"}}>{scannedList.length} SETS</span>
+      </div>
+      {scannedList.length===0&&<div style={{fontSize:11,color:"#333",textAlign:"center",padding:"12px 0"}}>No sets scanned yet</div>}
+      {scannedList.map((s,i)=>(
+        <div key={s.barcodeId} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 8px",background:i%2===0?"#0d0d14":"#111119",borderRadius:6,marginBottom:3}}>
+          <div style={{width:7,height:7,borderRadius:"50%",background:s.isNew?"#e0a020":"#34a876",flexShrink:0}}/>
+          <div style={{flex:1}}>
+            <div style={{fontSize:12,color:"#ddd8cc"}}>{s.name}</div>
+            <div style={{fontSize:9,color:"#444",fontFamily:"monospace"}}>{s.barcodeId}{s.isNew&&<span style={{color:"#e0a020",marginLeft:6}}>NEW</span>}</div>
           </div>
-        ))}
-      </div>
-      {/* Always-visible bottom buttons */}
-      <div style={{display:"flex",gap:8,justifyContent:"space-between",paddingTop:12,borderTop:"1px solid #2a2a3e",marginTop:8}}>
-        <Btn outline color="#555" onClick={()=>{stopScan();setStep("location");}}>← Back</Btn>
-        <Btn color="#34a876" onClick={()=>{stopScan();setStep("confirm");}} style={{opacity:scannedList.length===0?0.4:1}}>Review {scannedList.length} Sets →</Btn>
-      </div>
-    </div>}
+          <button onClick={()=>removeItem(s.barcodeId)} style={{background:"none",border:"none",color:"#444",cursor:"pointer",fontSize:14,padding:0}}>×</button>
+        </div>
+      ))}
+    </>}
 
     {/* STEP 3 — Confirm */}
     {step==="confirm"&&<>
