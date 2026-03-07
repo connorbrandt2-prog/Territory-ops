@@ -328,13 +328,14 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
       ctx.drawImage(img,0,0);
       URL.revokeObjectURL(url);
       const worker=await window.Tesseract.createWorker("eng");
-      await worker.setParameters({tessedit_char_whitelist:"0123456789 ",tessedit_pageseg_mode:"6"});
+      await worker.setParameters({tessedit_pageseg_mode:"11"}); // sparse text - finds text anywhere
       const {data:{text}}=await worker.recognize(canvas);
       await worker.terminate();
+      setScanErr("Raw OCR: "+text.trim().slice(0,80));
       const nums=extractSerial(text);
       if(nums&&nums.length>0){
         setFoundNums(nums);setScanning(false);setScanHint("");
-      }else{setScanErr("No numbers found — try again or enter manually.");setScanning(false);}
+      }else{setScanErr("Nothing found. Raw: \""+text.trim().slice(0,60)+"\"");setScanning(false);}
     }catch(e){setScanErr("Error: "+e.name+" — "+e.message);setScanning(false);}
   };
   const startScan=()=>{photoInputRef.current&&photoInputRef.current.click();};
