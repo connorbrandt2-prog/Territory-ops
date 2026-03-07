@@ -118,9 +118,8 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
   const startScan=async()=>{
     setScanErr("");setScanning(true);processingRef.current=false;
     try{
-      let BrowserMultiFormatReader;
-      try{const mod=await import('https://unpkg.com/@zxing/browser@0.1.4/esm/index.js');BrowserMultiFormatReader=mod.BrowserMultiFormatReader;}
-      catch(e){setScanErr("Scanner failed to load — use manual entry below.");setScanning(false);return;}
+      const BrowserMultiFormatReader=window.ZXingBrowser?.BrowserMultiFormatReader;
+      if(!BrowserMultiFormatReader){setScanErr("Scanner loading — please try again in a moment.");setScanning(false);return;}
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       setTimeout(()=>{
@@ -295,9 +294,8 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
   const startScan=async()=>{
     setScanErr("");setScanHint("Point camera at the barcode on the set");setScanning(true);
     try{
-      let BrowserMultiFormatReader;
-      try{const mod=await import('https://unpkg.com/@zxing/browser@0.1.4/esm/index.js');BrowserMultiFormatReader=mod.BrowserMultiFormatReader;}
-      catch(e){setScanErr("Scanner failed to load — enter barcode manually below.");setScanning(false);return;}
+      const BrowserMultiFormatReader=window.ZXingBrowser?.BrowserMultiFormatReader;
+      if(!BrowserMultiFormatReader){setScanErr("Scanner loading — please try again in a moment.");setScanning(false);return;}
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       setTimeout(()=>{
@@ -666,9 +664,8 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
   const startScan=async()=>{
     setScanErr("");setScanHint("Point at a shipping label barcode");setScanning(true);
     try{
-      let BrowserMultiFormatReader;
-      try{const mod=await import('https://unpkg.com/@zxing/browser@0.1.4/esm/index.js');BrowserMultiFormatReader=mod.BrowserMultiFormatReader;}
-      catch(e){setScanErr("Scanner failed to load — check your connection.");setScanning(false);return;}
+      const BrowserMultiFormatReader=window.ZXingBrowser?.BrowserMultiFormatReader;
+      if(!BrowserMultiFormatReader){setScanErr("Scanner loading — please try again in a moment.");setScanning(false);return;}
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       setTimeout(()=>{
