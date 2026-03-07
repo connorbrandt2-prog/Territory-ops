@@ -1,6 +1,5 @@
 import React,{useState} from "react";
-import {BrowserMultiFormatReader} from '@zxing/browser';
-import {BarcodeFormat,DecodeHintType} from '@zxing/library';
+// barcode scanning via zbar-wasm loaded in index.html
 
 const ACCTS=[
   {id:"connor",name:"Connor Brandt",initials:"CB",color:"#4a9eff",pin:"1234",admin:true},
@@ -108,33 +107,39 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
   const [locSearch,setLocSearch]=useState("");
   const videoRef=React.useRef(null);
   const streamRef=React.useRef(null);
-  const codeReaderRef=React.useRef(null);
+  const rafRef=React.useRef(null);
   const processingRef=React.useRef(false);
 
   const stopScan=()=>{
-    if(codeReaderRef.current){try{codeReaderRef.current.reset();}catch(e){}}
-    codeReaderRef.current=null;
+    if(rafRef.current)cancelAnimationFrame(rafRef.current);
+    rafRef.current=null;
     if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
     streamRef.current=null;setScanning(false);
   };
   const startScan=async()=>{
     setScanErr("");setScanning(true);processingRef.current=false;
     try{
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       videoRef.current.srcObject=stream;
       await videoRef.current.play();
-      const hints=new Map([[DecodeHintType.POSSIBLE_FORMATS,[BarcodeFormat.DATA_MATRIX,BarcodeFormat.QR_CODE,BarcodeFormat.CODE_128,BarcodeFormat.CODE_39]],[DecodeHintType.TRY_HARDER,true]]);
-      const reader=new BrowserMultiFormatReader(hints);
-      codeReaderRef.current=reader;
-      reader.decodeFromStream(stream,videoRef.current,(result,err)=>{
-        if(result&&!processingRef.current){
-          processingRef.current=true;
-          const id=result.getText().trim();
-          addScannedItem(id);
-          setTimeout(()=>{processingRef.current=false;},1500);
-        }
-      });
+      const scanLoop=async()=>{
+        if(!streamRef.current||!videoRef.current)return;
+        try{
+          const canvas=document.createElement("canvas");
+          canvas.width=videoRef.current.videoWidth;canvas.height=videoRef.current.videoHeight;
+          canvas.getContext("2d").drawImage(videoRef.current,0,0);
+          const syms=await window.zbarWasm.scanImageData(canvas.getContext("2d").getImageData(0,0,canvas.width,canvas.height));
+          if(syms&&syms.length>0&&!processingRef.current){
+            processingRef.current=true;
+            const id=syms[0].decode().trim();
+            addScannedItem(id);
+            setTimeout(()=>{processingRef.current=false;},1500);
+          }
+        }catch(e){}
+        rafRef.current=requestAnimationFrame(scanLoop);
+      };
+      rafRef.current=requestAnimationFrame(scanLoop);
     }catch(e){setScanErr("Camera denied — go to Settings → Safari → Camera → Allow.");setScanning(false);}
   };
   React.useEffect(()=>()=>{stopScan();},[]);
@@ -281,31 +286,37 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
   const videoRef=React.useRef(null);
   const streamRef=React.useRef(null);
 
-  const codeReaderRef=React.useRef(null);
-
+  const rafRef=React.useRef(null);
   const stopScan=()=>{
-    if(codeReaderRef.current){try{codeReaderRef.current.reset();}catch(e){}}
-    codeReaderRef.current=null;
+    if(rafRef.current)cancelAnimationFrame(rafRef.current);
+    rafRef.current=null;
     if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
     streamRef.current=null;setScanning(false);
   };
   const startScan=async()=>{
     setScanErr("");setScanHint("Point camera at the barcode on the set");setScanning(true);
     try{
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       videoRef.current.srcObject=stream;
       await videoRef.current.play();
-      const hints=new Map([[DecodeHintType.POSSIBLE_FORMATS,[BarcodeFormat.DATA_MATRIX,BarcodeFormat.QR_CODE,BarcodeFormat.CODE_128,BarcodeFormat.CODE_39]],[DecodeHintType.TRY_HARDER,true]]);
-      const reader=new BrowserMultiFormatReader(hints);
-      codeReaderRef.current=reader;
-      reader.decodeFromStream(stream,videoRef.current,(result,err)=>{
-        if(result){
-          const id=result.getText().trim();
-          stopScan();
-          handleBarcodeFound(id);
-        }
-      });
+      const scanLoop=async()=>{
+        if(!streamRef.current||!videoRef.current)return;
+        try{
+          const canvas=document.createElement("canvas");
+          canvas.width=videoRef.current.videoWidth;canvas.height=videoRef.current.videoHeight;
+          canvas.getContext("2d").drawImage(videoRef.current,0,0);
+          const syms=await window.zbarWasm.scanImageData(canvas.getContext("2d").getImageData(0,0,canvas.width,canvas.height));
+          if(syms&&syms.length>0){
+            const id=syms[0].decode().trim();
+            stopScan();
+            handleBarcodeFound(id);
+            return;
+          }
+        }catch(e){}
+        rafRef.current=requestAnimationFrame(scanLoop);
+      };
+      rafRef.current=requestAnimationFrame(scanLoop);
     }catch(e){setScanErr("Camera access denied — go to Settings → Safari → Camera → Allow.");setScanning(false);}
   };
   React.useEffect(()=>()=>{stopScan();},[]);
@@ -339,12 +350,21 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
         {scanErr&&<div style={{fontSize:11,color:"#e05060",padding:"6px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #e0506033",marginBottom:8}}>{scanErr}</div>}
         {scanning&&<button onClick={stopScan} style={{width:"100%",padding:"8px",background:"transparent",border:"1px solid #e05060",color:"#e05060",borderRadius:7,cursor:"pointer",fontFamily:"inherit",fontSize:12}}>Stop Scanning</button>}
       </div>
-      <F><FL>Or enter barcode manually</FL>
+      <div style={{marginTop:12}}>
+        <div style={{fontSize:10,color:"#555",letterSpacing:1,marginBottom:6}}>OR ENTER BARCODE MANUALLY</div>
         <div style={{display:"flex",gap:7}}>
-          <Inp value={manualId} onChange={e=>setManualId(e.target.value)} placeholder="Globus barcode ID..."/>
+          <input
+            autoFocus
+            inputMode="numeric"
+            value={manualId}
+            onChange={e=>setManualId(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&manualId.trim()&&handleBarcodeFound(manualId.trim())}
+            placeholder="Type barcode ID (e.g. 2024851)"
+            style={{flex:1,padding:"12px 14px",background:"#0d0d14",border:"2px solid #34a87655",borderRadius:8,color:"#ddd8cc",fontFamily:"inherit",fontSize:16,outline:"none"}}
+          />
           <Btn color="#34a876" onClick={()=>manualId.trim()&&handleBarcodeFound(manualId.trim())}>Look Up</Btn>
         </div>
-      </F>
+      </div>
       <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:8}}><Btn outline color="#555" onClick={onClose}>Cancel</Btn></div>
     </>}
 
@@ -647,33 +667,38 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
   const [scanHint,setScanHint]=useState("");
   const videoRef=React.useRef(null);
   const streamRef=React.useRef(null);
-  const codeReaderRef=React.useRef(null);
-
+  const rafRef=React.useRef(null);
   const stopScan=()=>{
-    if(codeReaderRef.current){try{codeReaderRef.current.reset();}catch(e){}}
-    codeReaderRef.current=null;
+    if(rafRef.current)cancelAnimationFrame(rafRef.current);
+    rafRef.current=null;
     if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());
     streamRef.current=null;setScanning(false);
   };
   const startScan=async()=>{
     setScanErr("");setScanHint("Point at a shipping label barcode");setScanning(true);
     try{
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       videoRef.current.srcObject=stream;
       await videoRef.current.play();
-      const hints=new Map([[DecodeHintType.POSSIBLE_FORMATS,[BarcodeFormat.DATA_MATRIX,BarcodeFormat.QR_CODE,BarcodeFormat.CODE_128,BarcodeFormat.CODE_39]],[DecodeHintType.TRY_HARDER,true]]);
-      const reader=new BrowserMultiFormatReader(hints);
-      codeReaderRef.current=reader;
-      reader.decodeFromStream(stream,videoRef.current,(result,err)=>{
-        if(result){
-          const raw=result.getText().replace(/\s/g,"");
-          const t=extractTracking(raw);
-          sf(p=>({...p,fedex:t}));
-          setScanHint("✓ "+t);
-          setTimeout(stopScan,800);
-        }
-      });
+      const scanLoop=async()=>{
+        if(!streamRef.current||!videoRef.current)return;
+        try{
+          const canvas=document.createElement("canvas");
+          canvas.width=videoRef.current.videoWidth;canvas.height=videoRef.current.videoHeight;
+          canvas.getContext("2d").drawImage(videoRef.current,0,0);
+          const syms=await window.zbarWasm.scanImageData(canvas.getContext("2d").getImageData(0,0,canvas.width,canvas.height));
+          if(syms&&syms.length>0){
+            const raw=syms[0].decode().replace(/\s/g,"");
+            const t=extractTracking(raw);
+            sf(p=>({...p,fedex:t}));
+            setScanHint("✓ "+t);
+            stopScan();return;
+          }
+        }catch(e){}
+        rafRef.current=requestAnimationFrame(scanLoop);
+      };
+      rafRef.current=requestAnimationFrame(scanLoop);
     }catch(e){setScanErr("Camera access denied — go to Settings → Safari → Camera → Allow.");setScanning(false);}
   };
   const extractTracking=raw=>{const clean=raw.replace(/\D/g,"");const m=clean.match(/(?:96|94|92|93)\d{18,20}|(\d{12}|\d{15}|\d{20})/);return m?m[0]:raw.slice(0,30);};
