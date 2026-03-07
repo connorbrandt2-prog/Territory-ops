@@ -1,5 +1,6 @@
 import React,{useState} from "react";
 import {BrowserMultiFormatReader} from '@zxing/browser';
+import {BarcodeFormat,DecodeHintType} from '@zxing/library';
 
 const ACCTS=[
   {id:"connor",name:"Connor Brandt",initials:"CB",color:"#4a9eff",pin:"1234",admin:true},
@@ -123,7 +124,8 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
       streamRef.current=stream;
       videoRef.current.srcObject=stream;
       await videoRef.current.play();
-      const reader=new BrowserMultiFormatReader();
+      const hints=new Map([[DecodeHintType.POSSIBLE_FORMATS,[BarcodeFormat.DATA_MATRIX,BarcodeFormat.QR_CODE,BarcodeFormat.CODE_128,BarcodeFormat.CODE_39]],[DecodeHintType.TRY_HARDER,true]]);
+      const reader=new BrowserMultiFormatReader(hints);
       codeReaderRef.current=reader;
       reader.decodeFromStream(stream,videoRef.current,(result,err)=>{
         if(result&&!processingRef.current){
@@ -294,7 +296,8 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
       streamRef.current=stream;
       videoRef.current.srcObject=stream;
       await videoRef.current.play();
-      const reader=new BrowserMultiFormatReader();
+      const hints=new Map([[DecodeHintType.POSSIBLE_FORMATS,[BarcodeFormat.DATA_MATRIX,BarcodeFormat.QR_CODE,BarcodeFormat.CODE_128,BarcodeFormat.CODE_39]],[DecodeHintType.TRY_HARDER,true]]);
+      const reader=new BrowserMultiFormatReader(hints);
       codeReaderRef.current=reader;
       reader.decodeFromStream(stream,videoRef.current,(result,err)=>{
         if(result){
@@ -659,7 +662,8 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
       streamRef.current=stream;
       videoRef.current.srcObject=stream;
       await videoRef.current.play();
-      const reader=new BrowserMultiFormatReader();
+      const hints=new Map([[DecodeHintType.POSSIBLE_FORMATS,[BarcodeFormat.DATA_MATRIX,BarcodeFormat.QR_CODE,BarcodeFormat.CODE_128,BarcodeFormat.CODE_39]],[DecodeHintType.TRY_HARDER,true]]);
+      const reader=new BrowserMultiFormatReader(hints);
       codeReaderRef.current=reader;
       reader.decodeFromStream(stream,videoRef.current,(result,err)=>{
         if(result){
