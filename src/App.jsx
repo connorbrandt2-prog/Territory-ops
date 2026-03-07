@@ -1,4 +1,5 @@
 import React,{useState} from "react";
+import {BrowserMultiFormatReader} from '@zxing/browser';
 
 const ACCTS=[
   {id:"connor",name:"Connor Brandt",initials:"CB",color:"#4a9eff",pin:"1234",admin:true},
@@ -118,29 +119,16 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
   const startScan=async()=>{
     setScanErr("");setScanning(true);processingRef.current=false;
     try{
-      const BrowserMultiFormatReader=window.ZXing?.BrowserMultiFormatReader;
-      if(!BrowserMultiFormatReader){setScanErr("ZXing not loaded. window.ZXing="+JSON.stringify(Object.keys(window.ZXing||{})).slice(0,80));setScanning(false);return;}
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
-      streamRef.current=stream;
-      setTimeout(()=>{
-        if(!videoRef.current)return;
-        videoRef.current.srcObject=stream;
-        videoRef.current.play();
-        const hints=new Map();
-        const formats=[window.ZXing.BarcodeFormat.DATA_MATRIX,window.ZXing.BarcodeFormat.CODE_128,window.ZXing.BarcodeFormat.CODE_39,window.ZXing.BarcodeFormat.QR_CODE];
-        hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS,formats);
-        hints.set(window.ZXing.DecodeHintType.TRY_HARDER,true);
-        const reader=new BrowserMultiFormatReader(hints);
-        codeReaderRef.current=reader;
-        reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
-          if(result&&!processingRef.current){
-            processingRef.current=true;
-            const id=result.getText().trim();
-            addScannedItem(id);
-            setTimeout(()=>{processingRef.current=false;},1500);
-          }
-        });
-      },200);
+      const reader=new BrowserMultiFormatReader();
+      codeReaderRef.current=reader;
+      await reader.decodeFromVideoDevice(undefined,videoRef.current,(result,err)=>{
+        if(result&&!processingRef.current){
+          processingRef.current=true;
+          const id=result.getText().trim();
+          addScannedItem(id);
+          setTimeout(()=>{processingRef.current=false;},1500);
+        }
+      });
     }catch(e){setScanErr("Camera denied — go to iPhone Settings → Safari → Camera → Allow.");setScanning(false);}
   };
   React.useEffect(()=>()=>{stopScan();},[]);
@@ -298,28 +286,15 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
   const startScan=async()=>{
     setScanErr("");setScanHint("Point camera at the barcode on the set");setScanning(true);
     try{
-      const BrowserMultiFormatReader=window.ZXing?.BrowserMultiFormatReader;
-      if(!BrowserMultiFormatReader){setScanErr("ZXing not loaded. window.ZXing="+JSON.stringify(Object.keys(window.ZXing||{})).slice(0,80));setScanning(false);return;}
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
-      streamRef.current=stream;
-      setTimeout(()=>{
-        if(!videoRef.current)return;
-        videoRef.current.srcObject=stream;
-        videoRef.current.play();
-        const hints=new Map();
-        const formats=[window.ZXing.BarcodeFormat.DATA_MATRIX,window.ZXing.BarcodeFormat.CODE_128,window.ZXing.BarcodeFormat.CODE_39,window.ZXing.BarcodeFormat.QR_CODE];
-        hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS,formats);
-        hints.set(window.ZXing.DecodeHintType.TRY_HARDER,true);
-        const reader=new BrowserMultiFormatReader(hints);
-        codeReaderRef.current=reader;
-        reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
-          if(result){
-            const id=result.getText().trim();
-            stopScan();
-            handleBarcodeFound(id);
-          }
-        });
-      },200);
+      const reader=new BrowserMultiFormatReader();
+      codeReaderRef.current=reader;
+      await reader.decodeFromVideoDevice(undefined,videoRef.current,(result,err)=>{
+        if(result){
+          const id=result.getText().trim();
+          stopScan();
+          handleBarcodeFound(id);
+        }
+      });
     }catch(e){setScanErr("Camera access denied — go to iPhone Settings → Safari → Camera → Allow.");setScanning(false);}
   };
   React.useEffect(()=>()=>{stopScan();},[]);
@@ -672,30 +647,17 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
   const startScan=async()=>{
     setScanErr("");setScanHint("Point at a shipping label barcode");setScanning(true);
     try{
-      const BrowserMultiFormatReader=window.ZXing?.BrowserMultiFormatReader;
-      if(!BrowserMultiFormatReader){setScanErr("ZXing not loaded. window.ZXing="+JSON.stringify(Object.keys(window.ZXing||{})).slice(0,80));setScanning(false);return;}
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
-      streamRef.current=stream;
-      setTimeout(()=>{
-        if(!videoRef.current)return;
-        videoRef.current.srcObject=stream;
-        videoRef.current.play();
-        const hints=new Map();
-        const formats=[window.ZXing.BarcodeFormat.CODE_128,window.ZXing.BarcodeFormat.CODE_39,window.ZXing.BarcodeFormat.DATA_MATRIX,window.ZXing.BarcodeFormat.QR_CODE];
-        hints.set(window.ZXing.DecodeHintType.POSSIBLE_FORMATS,formats);
-        hints.set(window.ZXing.DecodeHintType.TRY_HARDER,true);
-        const reader=new BrowserMultiFormatReader(hints);
-        codeReaderRef.current=reader;
-        reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
-          if(result){
-            const raw=result.getText().replace(/\s/g,"");
-            const t=extractTracking(raw);
-            sf(p=>({...p,fedex:t}));
-            setScanHint("✓ "+t);
-            setTimeout(stopScan,800);
-          }
-        });
-      },200);
+      const reader=new BrowserMultiFormatReader();
+      codeReaderRef.current=reader;
+      await reader.decodeFromVideoDevice(undefined,videoRef.current,(result,err)=>{
+        if(result){
+          const raw=result.getText().replace(/\s/g,"");
+          const t=extractTracking(raw);
+          sf(p=>({...p,fedex:t}));
+          setScanHint("✓ "+t);
+          setTimeout(stopScan,800);
+        }
+      });
     }catch(e){setScanErr("Camera access denied — go to iPhone Settings → Safari → Camera → Allow.");setScanning(false);}
   };
   const extractTracking=raw=>{const clean=raw.replace(/\D/g,"");const m=clean.match(/(?:96|94|92|93)\d{18,20}|(\d{12}|\d{15}|\d{20})/);return m?m[0]:raw.slice(0,30);};
