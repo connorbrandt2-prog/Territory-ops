@@ -333,8 +333,7 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
       await worker.terminate();
       const nums=extractSerial(text);
       if(nums&&nums.length>0){
-        if(nums.length===1){setScanning(false);setScanHint("");handleBarcodeFound(nums[0]);}
-        else{setFoundNums(nums);setScanning(false);setScanHint("");}
+        setFoundNums(nums);setScanning(false);setScanHint("");
       }else{setScanErr("No numbers found — try again or enter manually.");setScanning(false);}
     }catch(e){setScanErr("Error: "+e.name+" — "+e.message);setScanning(false);}
   };
@@ -364,8 +363,8 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
           </div>
           :<div onClick={startScan} style={{height:140,background:"#0d0d14",border:"2px dashed #34a87655",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:8}}>
             <div style={{fontSize:36}}>📷</div>
-            <div style={{fontSize:13,color:"#34a876",fontWeight:700}}>Take photo of serial number</div>
-            <div style={{fontSize:10,color:"#555"}}>iOS will autofocus for a clean read</div>
+            <div style={{fontSize:13,color:"#34a876",fontWeight:700}}>Photo the white Globus label tag</div>
+            <div style={{fontSize:10,color:"#555"}}>Fill the frame with just the white sticker — not the whole tray</div>
           </div>
         }
         {scanErr&&<div style={{fontSize:11,color:"#e05060",padding:"6px 10px",background:"#1a0a0a",borderRadius:6,border:"1px solid #e0506033",marginBottom:8,marginTop:8}}>{scanErr}</div>}
@@ -379,7 +378,7 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
               </button>
             ))}
           </div>
-          <div style={{fontSize:10,color:"#555",marginTop:8}}>Tap the serial from the Globus label</div>
+          <div style={{fontSize:10,color:"#555",marginTop:8}}>Tap the serial from the white Globus sticker (e.g. 2024851)</div>
         </div>}
       </div>
       <div style={{marginTop:12}}>
