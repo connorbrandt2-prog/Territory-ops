@@ -12,10 +12,7 @@
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { background: #0d0d14; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     </style>
-    <script type="module">
-      import { scanImageData } from 'https://cdn.jsdelivr.net/npm/@undecaf/zbar-wasm@0.9.15/dist/main.js';
-      window.zbarWasm = { scanImageData };
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   </head>
   <body>
     <div id="root"></div>
