@@ -118,13 +118,13 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
   const startScan=async()=>{
     setScanErr("");setScanning(true);processingRef.current=false;
     try{
+      const {BrowserMultiFormatReader} = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.js');
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       setTimeout(()=>{
         if(!videoRef.current)return;
         videoRef.current.srcObject=stream;
         videoRef.current.play();
-        const {BrowserMultiFormatReader} = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.js');
         const reader=new BrowserMultiFormatReader();
         codeReaderRef.current=reader;
         reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
@@ -293,13 +293,13 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
   const startScan=async()=>{
     setScanErr("");setScanHint("Point camera at the barcode on the set");setScanning(true);
     try{
+      const {BrowserMultiFormatReader} = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.js');
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       setTimeout(()=>{
         if(!videoRef.current)return;
         videoRef.current.srcObject=stream;
         videoRef.current.play();
-        const {BrowserMultiFormatReader} = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.js');
         const reader=new BrowserMultiFormatReader();
         codeReaderRef.current=reader;
         reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
@@ -662,13 +662,13 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
   const startScan=async()=>{
     setScanErr("");setScanHint("Point at a shipping label barcode");setScanning(true);
     try{
+      const {BrowserMultiFormatReader} = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.js');
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
       setTimeout(()=>{
         if(!videoRef.current)return;
         videoRef.current.srcObject=stream;
         videoRef.current.play();
-        const {BrowserMultiFormatReader} = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.4/esm/index.js');
         const reader=new BrowserMultiFormatReader();
         codeReaderRef.current=reader;
         reader.decodeFromVideoElement(videoRef.current,(result,err)=>{
