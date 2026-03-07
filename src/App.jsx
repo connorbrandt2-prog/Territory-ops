@@ -137,7 +137,7 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
       await videoRef.current.play();
       if(!window.Tesseract){setScanErr("OCR not loaded — enter manually below.");setScanning(false);return;}
       const worker=await window.Tesseract.createWorker("eng");
-      await worker.setParameters({tessedit_char_whitelist:"0123456789",tessedit_pageseg_mode:"7"});
+      await worker.setParameters({tessedit_char_whitelist:"0123456789",tessedit_pageseg_mode:"13"});
       workerRef.current=worker;
       setScanHint("Hold steady over the serial number");
       let lastScan=0;
@@ -339,13 +339,26 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
         if(now-lastScan>1000){
           lastScan=now;
           try{
-            const canvas=document.createElement("canvas");
+            // Crop center strip, scale up 3x, convert to high-contrast B&W
             const vw=videoRef.current.videoWidth,vh=videoRef.current.videoHeight;
-            canvas.width=vw;canvas.height=Math.floor(vh*0.4);
-            canvas.getContext("2d").drawImage(videoRef.current,0,Math.floor(vh*0.3),vw,Math.floor(vh*0.4),0,0,vw,Math.floor(vh*0.4));
+            const cropY=Math.floor(vh*0.35),cropH=Math.floor(vh*0.3);
+            const scale=3;
+            const canvas=document.createElement("canvas");
+            canvas.width=vw*scale;canvas.height=cropH*scale;
+            const ctx=canvas.getContext("2d");
+            ctx.drawImage(videoRef.current,0,cropY,vw,cropH,0,0,vw*scale,cropH*scale);
+            // Greyscale + threshold for sharp black/white
+            const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+            const d=imgData.data;
+            for(let i=0;i<d.length;i+=4){
+              const gray=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+              const val=gray>140?255:0;
+              d[i]=d[i+1]=d[i+2]=val;
+            }
+            ctx.putImageData(imgData,0,0);
             const {data:{text}}=await worker.recognize(canvas);
             const clean=text.trim();
-            setScanHint("Reading: "+(clean.slice(0,30)||"—"));
+            setScanHint("Reading: "+(clean.replace(/\s/g,"").slice(0,20)||"—"));
             const serial=extractSerial(clean);
             if(serial){stopScan();worker.terminate();handleBarcodeFound(serial);return;}
           }catch(e){setScanHint("OCR error: "+e.message);}
