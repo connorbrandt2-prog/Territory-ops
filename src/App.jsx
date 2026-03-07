@@ -118,7 +118,7 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
   const startScan=async()=>{
     setScanErr("");setScanning(true);processingRef.current=false;
     try{
-      const BrowserMultiFormatReader=window.ZXingBrowser?.BrowserMultiFormatReader;
+      const BrowserMultiFormatReader=window.ZXing?.BrowserMultiFormatReader;
       if(!BrowserMultiFormatReader){setScanErr("Scanner loading — please try again in a moment.");setScanning(false);return;}
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
@@ -294,7 +294,7 @@ function ScanMoveModal({currentUser,assets,allLoc,allTrays,initialAsset,onRegist
   const startScan=async()=>{
     setScanErr("");setScanHint("Point camera at the barcode on the set");setScanning(true);
     try{
-      const BrowserMultiFormatReader=window.ZXingBrowser?.BrowserMultiFormatReader;
+      const BrowserMultiFormatReader=window.ZXing?.BrowserMultiFormatReader;
       if(!BrowserMultiFormatReader){setScanErr("Scanner loading — please try again in a moment.");setScanning(false);return;}
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
@@ -664,7 +664,7 @@ function LoanerModal({loaner,currentUser,onSave,onClose}){
   const startScan=async()=>{
     setScanErr("");setScanHint("Point at a shipping label barcode");setScanning(true);
     try{
-      const BrowserMultiFormatReader=window.ZXingBrowser?.BrowserMultiFormatReader;
+      const BrowserMultiFormatReader=window.ZXing?.BrowserMultiFormatReader;
       if(!BrowserMultiFormatReader){setScanErr("Scanner loading — please try again in a moment.");setScanning(false);return;}
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}}});
       streamRef.current=stream;
