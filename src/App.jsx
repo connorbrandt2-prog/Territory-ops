@@ -201,14 +201,12 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
       {/* Photo capture */}
       <input ref={photoInputRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{processPhoto(e.target.files[0]);e.target.value="";}}/>
       {scanning
-        ?<div style={{height:90,background:"#0d0d14",border:"1px solid #34a87655",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,marginBottom:8}}>
-          <div style={{fontSize:20}}>⏳</div>
-          <div style={{fontSize:12,color:"#34a876"}}>Reading serial number...</div>
+        ?<div style={{height:60,background:"#0d0d14",border:"1px solid #34a87655",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:6}}>
+          <span style={{fontSize:16}}>⏳</span><span style={{fontSize:12,color:"#34a876"}}>Reading...</span>
         </div>
-        :<div onClick={startScan} style={{height:90,background:"#0d0d14",border:"2px dashed #34a87644",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:6,marginBottom:8}}>
-          <div style={{fontSize:22}}>📷</div>
-          <div style={{fontSize:12,color:"#34a876",fontWeight:700}}>{scannedList.length>0?"📷 Scan Next Set":"Photo the white Globus label"}</div>
-          {scannedList.length>0&&<div style={{fontSize:10,color:"#555"}}>{scannedList.length} set{scannedList.length!==1?"s":""} scanned — tap to add more</div>}
+        :<div onClick={startScan} style={{height:60,background:"#0d0d14",border:"2px dashed #34a87644",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",gap:10,marginBottom:6}}>
+          <span style={{fontSize:20}}>📷</span>
+          <span style={{fontSize:12,color:"#34a876",fontWeight:700}}>{scannedList.length>0?"Scan Next Set":"Photo the Globus label"}</span>
         </div>}
       {pendingNums.length>0&&<div style={{marginBottom:8}}>
         <div style={{fontSize:11,color:"#aaa",marginBottom:6}}>Which number is the serial?</div>
@@ -245,7 +243,7 @@ function BulkScanModal({currentUser,assets,allLoc,onComplete,onClose}){
           </div>
         ))}
       </div>
-      <div style={{display:"flex",gap:8,justifyContent:"space-between"}}>
+      <div style={{position:"sticky",bottom:0,background:"#13131e",paddingTop:10,marginTop:4,display:"flex",gap:8,justifyContent:"space-between"}}>
         <Btn outline color="#555" onClick={()=>{stopScan();setStep("location");}}>← Back</Btn>
         <Btn color="#34a876" onClick={()=>{stopScan();setStep("confirm");}} style={{opacity:scannedList.length===0?0.4:1}}>Review {scannedList.length} Sets →</Btn>
       </div>
