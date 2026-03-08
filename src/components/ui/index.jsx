@@ -88,10 +88,12 @@ export const Btn = ({ children, onClick, color, text, outline, small, style }) =
   );
 };
 
-/** Avatar dot showing a team member's initials. */
-export const Dot = ({ id, size }) => {
+/** Avatar dot showing a team member's initials.
+ *  Pass `profile` (from getUserProfile) for a Supabase user,
+ *  or `id` (from ACCTS) for a hardcoded team member. */
+export const Dot = ({ id, profile, size }) => {
   const sz = size || 22;
-  const a  = abt(id);
+  const a  = profile || abt(id);
   return (
     <div
       title={a.name}

@@ -14,7 +14,7 @@
 //   Long term: Supabase / Postgres + Row Level Security to isolate team data.
 
 import React, { useState } from "react";
-import { abt }          from "../../constants/accounts";
+import { getUserProfile } from "../../lib/supabase";
 import { FACS, ALL_LOC, locById } from "../../constants/facilities";
 import { TODAY }        from "../../constants/theme";
 import { sameDay }      from "../../utils/dates";
@@ -41,8 +41,9 @@ import LoanerModal      from "../loaners/LoanerModal";
 import BulkScanModal    from "../inventory/BulkScanModal";
 import ScanMoveModal    from "../inventory/ScanMoveModal";
 
-export default function Shell({ u, onLogout }) {
-  const me = abt(u);
+export default function Shell({ user, onLogout }) {
+  const me = getUserProfile(user);
+  const u  = user.id;
 
   // ── Responsive ────────────────────────────────────────────────────────────
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 700);
@@ -284,7 +285,7 @@ export default function Shell({ u, onLogout }) {
               </div>
             )}
           </div>
-          <Dot id={u} size={30} />
+          <Dot profile={me} size={30} />
         </div>
       </div>
 

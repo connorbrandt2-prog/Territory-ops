@@ -1,26 +1,20 @@
-// ─── App Root ─────────────────────────────────────────────────────────────────
-// Thin auth router: shows Login or Shell based on authenticated user.
-//
-// TODO (Real Auth):
-//   - Replace useState with a Supabase auth session listener (onAuthStateChange)
-//   - On mount, restore session from localStorage / Supabase token
-//   - Pass the full user object (id, name, teamId, role) to Shell
-//   - Redirect to /invite/:token for invite-link sign-ups
-//
-// TODO (Multi-tenant):
-//   - The teamId on the user object gates ALL data queries in Shell
-//   - Row Level Security in Supabase enforces isolation at the DB level
-//
-// TODO (iOS / React Native):
-//   - Replace this file with a React Navigation stack
-//   - LoginScreen → MainStack (tabs defined in Shell equivalent)
-import React, { useState } from "react";
-import Login from "./components/auth/Login";
-import Shell from "./components/layout/Shell";
+import React from 'react'
+import { useAuth } from './context/AuthContext'
+import Login from './components/auth/Login'
+import Shell from './components/layout/Shell'
+
+function Loading() {
+  return (
+    <div style={{ fontFamily: "'Palatino Linotype',serif", background: '#0d0d14', minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ fontSize: 11, color: '#34a876', letterSpacing: '4px', textTransform: 'uppercase', fontWeight: 700 }}>Territory Ops</div>
+    </div>
+  )
+}
 
 export default function App() {
-  const [user, setUser] = useState(null);
+  const { user, loading, signOut } = useAuth()
 
-  if (!user) return <Login onLogin={(id) => setUser(id)} />;
-  return <Shell u={user} onLogout={() => setUser(null)} />;
+  if (loading) return <Loading />
+  if (!user) return <Login />
+  return <Shell user={user} onLogout={signOut} />
 }
