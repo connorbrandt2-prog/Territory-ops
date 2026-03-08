@@ -80,7 +80,7 @@ export default function Shell({ u, onLogout }) {
   const week       = getWeek(weekAnchor);
   const schedCases = schedFilter === "mine" ? cases.filter((c) => c.coverageAssignee === u) : cases;
   const weekCases  = schedCases.filter((c) => week.some((d) => sameDay(d, c.date)));
-  const upcoming   = [...schedCases].filter((c) => c.date >= TODAY || sameDay(c.date, TODAY)).sort((a, b) => a.date - b.date);
+  const upcoming   = [...schedCases].filter((c) => c.date >= TODAY || sameDay(c.date, TODAY)).sort((a, b) => { const nA = (surgeons.find((s) => s.id === a.surgeonId)?.name || "").toLowerCase(); const nB = (surgeons.find((s) => s.id === b.surgeonId)?.name || "").toLowerCase(); return nA.localeCompare(nB) || a.date - b.date; });
 
   // ── Surgeons Modal State ───────────────────────────────────────────────────
   const [showAddSurg,  setShowAddSurg]  = useState(false);
