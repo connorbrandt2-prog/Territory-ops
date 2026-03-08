@@ -1,5 +1,5 @@
 // ─── Schedule Tab ─────────────────────────────────────────────────────────────
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { Bdg, Btn } from "../ui";
 import { ST, DAYS, MONTHS, SPEC_COLOR } from "../../constants/theme";
 import { sameDay, fmtD } from "../../utils/dates";
@@ -15,6 +15,25 @@ export default function ScheduleTab({
   week, weekCases, upcoming, schedCases,
 }) {
   const [confirmDeleteCase, setConfirmDeleteCase] = useState(false);
+
+  const touchStartX = useRef(null);
+  const shiftWeek = useCallback((dir) => {
+    setWeekAnchor(prev => { const d = new Date(prev); d.setDate(d.getDate() + dir * 7); return d; });
+  }, [setWeekAnchor]);
+
+  const onTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
+  const onTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    if (Math.abs(dx) > 40) shiftWeek(dx < 0 ? 1 : -1);
+    touchStartX.current = null;
+  };
+  const onWheel = (e) => {
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 30) {
+      e.preventDefault();
+      shiftWeek(e.deltaX > 0 ? 1 : -1);
+    }
+  };
 
   const selCase = cases.find((c) => c.id === selCaseId) || null;
 
@@ -51,7 +70,12 @@ export default function ScheduleTab({
       </div>
 
       {/* Week grid */}
-      <div style={{ padding: "8px 16px", display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: isMobile ? 2 : 4 }}>
+      <div
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onWheel={onWheel}
+        style={{ padding: "8px 16px", display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: isMobile ? 2 : 4, touchAction: "pan-y" }}
+      >
         {week.map((d, i) => {
           const dc  = weekCases.filter((c) => sameDay(c.date, d));
           const isT = sameDay(d, TODAY);
