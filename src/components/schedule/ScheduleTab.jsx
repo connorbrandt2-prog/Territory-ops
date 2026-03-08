@@ -18,7 +18,7 @@ export default function ScheduleTab({
 
   const touchStartX = useRef(null);
   const shiftWeek = useCallback((dir) => {
-    setWeekAnchor(prev => { const d = new Date(prev); d.setDate(d.getDate() + dir * 7); return d; });
+    setWeekAnchor(prev => { const d = new Date(prev); d.setDate(d.getDate() + dir); return d; });
   }, [setWeekAnchor]);
 
   const onTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
