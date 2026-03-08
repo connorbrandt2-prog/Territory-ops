@@ -1,7 +1,7 @@
 // ─── Schedule Tab ─────────────────────────────────────────────────────────────
 import React, { useState } from "react";
 import { Bdg, Btn } from "../ui";
-import { ST, DAYS, MONTHS } from "../../constants/theme";
+import { ST, DAYS, MONTHS, SPEC_COLOR } from "../../constants/theme";
 import { sameDay, fmtD } from "../../utils/dates";
 import { cPct, cSt } from "../../utils/caseUtils";
 import CaseDetail from "./CaseDetail";
@@ -57,7 +57,7 @@ export default function ScheduleTab({
           const isT = sameDay(d, TODAY);
           return (
             <div key={i} onClick={() => { if (dc.length > 0) setSelCaseId(dc[0].id); else { setNewCaseDate(d); setShowCaseModal(true); } }} style={{ background: isT ? "#141428" : "#111119", border: "1px solid " + (isT ? "#3a3a6e" : "#1e1e2e"), borderRadius: 8, padding: isMobile ? "4px 3px" : "6px 5px", minHeight: isMobile ? 48 : 58, cursor: "pointer" }} onMouseEnter={(e) => (e.currentTarget.style.borderColor = isT ? "#4a4a8e" : "#2a2a4e")} onMouseLeave={(e) => (e.currentTarget.style.borderColor = isT ? "#3a3a6e" : "#1e1e2e")}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 2 }}>
                 <span style={{ fontSize: isMobile ? 7 : 8, color: isT ? "#9090c0" : "#333", letterSpacing: "0.5px", textTransform: "uppercase" }}>{DAYS[i]}</span>
                 <span style={{ fontSize: isMobile ? 10 : 11, color: isT ? "#ddd8cc" : "#555", fontWeight: isT ? 700 : 400 }}>{d.getDate()}</span>
               </div>
@@ -72,7 +72,7 @@ export default function ScheduleTab({
         <div style={{ padding: "0 12px 80px" }}>
           <div style={{ fontSize: 8, letterSpacing: "2px", color: "#444", textTransform: "uppercase", marginBottom: 8, paddingTop: 4 }}>Upcoming</div>
           {upcoming.length === 0 && <div style={{ fontSize: 12, color: "#333", fontStyle: "italic" }}>No upcoming cases</div>}
-          {upcoming.map((c) => { const s = gs(c.surgeonId); const st = ST[cSt(c)]; return (<div key={c.id} onClick={() => setSelCaseId(c.id)} style={{ padding: "10px 12px", borderBottom: "1px solid #161620", cursor: "pointer", background: "#111119", borderRadius: 8, marginBottom: 6, borderLeft: "3px solid " + st.bar }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}><span style={{ fontSize: 13, fontWeight: 600, color: "#ddd8cc" }}>{s?.name}</span><Bdg bg={st.badge} color={st.bt} sm>{st.l}</Bdg></div><div style={{ fontSize: 11, color: "#9090c0", marginTop: 2 }}>{fmtD(c.date)}{c.time && " · " + c.time}</div><div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>{c.facility} — {c.procedure}</div>{c.ctUploaded && <span style={{ fontSize: 9, color: "#4a9eff", fontWeight: 700 }}>✓ CT</span>}</div>); })}
+          {upcoming.map((c) => { const s = gs(c.surgeonId); const st = ST[cSt(c)]; const sc = s?.color || SPEC_COLOR[s?.specialty] || "#888"; return (<div key={c.id} onClick={() => setSelCaseId(c.id)} style={{ padding: "10px 12px", borderBottom: "1px solid #161620", cursor: "pointer", background: "#111119", borderRadius: 8, marginBottom: 6, borderLeft: "3px solid " + sc }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}><span style={{ fontSize: 13, fontWeight: 600, color: "#ddd8cc" }}>{s?.name}</span><Bdg bg={st.badge} color={st.bt} sm>{st.l}</Bdg></div><div style={{ fontSize: 11, color: "#9090c0", marginTop: 2 }}>{fmtD(c.date)}{c.time && " · " + c.time}</div><div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>{c.facility} — {c.procedure}</div>{c.ctUploaded && <span style={{ fontSize: 9, color: "#4a9eff", fontWeight: 700 }}>✓ CT</span>}</div>); })}
         </div>
       ) : (
         /* Desktop: split panel */
@@ -80,7 +80,7 @@ export default function ScheduleTab({
           <div style={{ width: 160, background: "#111119", border: "1px solid #1e1e2e", borderRadius: "11px 0 0 11px", display: "flex", flexDirection: "column", overflow: "hidden", flexShrink: 0 }}>
             <div style={{ padding: "7px 10px", borderBottom: "1px solid #1e1e2e", fontSize: 8, letterSpacing: "2px", color: "#444", textTransform: "uppercase" }}>Upcoming</div>
             <div style={{ overflowY: "auto", flex: 1 }}>
-              {upcoming.map((c) => { const s = gs(c.surgeonId); const st = ST[cSt(c)]; const isSel = selCaseId === c.id; return (<div key={c.id} onClick={() => setSelCaseId(c.id)} style={{ padding: "8px 10px", borderBottom: "1px solid #161620", cursor: "pointer", background: isSel ? "#1a1a30" : "transparent", borderLeft: "3px solid " + (isSel ? st.bar : "transparent") }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}><span style={{ fontSize: 11, fontWeight: 600, color: "#ddd8cc" }}>{s?.name.replace("Dr. ", "Dr.")}</span><Bdg bg={st.badge} color={st.bt} sm>{st.l}</Bdg></div><div style={{ fontSize: 9, color: "#9090c0", marginTop: 1 }}>{fmtD(c.date)}</div>{c.ctUploaded && <div style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 3, padding: "1px 6px", background: "#0d1e33", border: "1px solid #4a9eff44", borderRadius: 4 }}><span style={{ fontSize: 8, color: "#4a9eff", fontWeight: 700 }}>✓ CT</span></div>}<div style={{ background: "#0a0a12", borderRadius: 3, height: 2, marginTop: 5 }}><div style={{ height: "100%", width: cPct(c) + "%", background: st.bar, borderRadius: 3 }} /></div></div>); })}
+              {upcoming.map((c) => { const s = gs(c.surgeonId); const st = ST[cSt(c)]; const sc = s?.color || SPEC_COLOR[s?.specialty] || "#888"; const isSel = selCaseId === c.id; return (<div key={c.id} onClick={() => setSelCaseId(c.id)} style={{ padding: "8px 10px", borderBottom: "1px solid #161620", cursor: "pointer", background: isSel ? "#1a1a30" : "transparent", borderLeft: "3px solid " + sc }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}><span style={{ fontSize: 11, fontWeight: 600, color: "#ddd8cc" }}>{s?.name.replace("Dr. ", "Dr.")}</span><Bdg bg={st.badge} color={st.bt} sm>{st.l}</Bdg></div><div style={{ fontSize: 9, color: "#9090c0", marginTop: 1 }}>{fmtD(c.date)}</div>{c.ctUploaded && <div style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 3, padding: "1px 6px", background: "#0d1e33", border: "1px solid #4a9eff44", borderRadius: 4 }}><span style={{ fontSize: 8, color: "#4a9eff", fontWeight: 700 }}>✓ CT</span></div>}<div style={{ background: "#0a0a12", borderRadius: 3, height: 2, marginTop: 5 }}><div style={{ height: "100%", width: cPct(c) + "%", background: st.bar, borderRadius: 3 }} /></div></div>); })}
             </div>
           </div>
           <div style={{ flex: 1, background: "#13131e", border: "1px solid #1e1e2e", borderLeft: "none", borderRadius: "0 11px 11px 0", padding: "14px", overflowY: "auto" }}>
