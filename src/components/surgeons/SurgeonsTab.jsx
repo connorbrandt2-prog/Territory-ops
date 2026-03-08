@@ -18,11 +18,18 @@ export default function SurgeonsTab({
   const [newProfileName,       setNewProfileName]       = useState("");
   const [confirmDeleteProfKey, setConfirmDeleteProfKey] = useState(null);
   const [confirmDeleteSurgId,  setConfirmDeleteSurgId]  = useState(null);
+  const [surgSort,             setSurgSort]             = useState("name");
+
+  const sortedSurgeons = [...surgeons].sort((a, b) => {
+    if (surgSort === "hospital") return (a.facility || "").localeCompare(b.facility || "");
+    const lastName = (n) => n.split(" ").pop();
+    return lastName(a.name).localeCompare(lastName(b.name));
+  });
 
   const selSurg = surgeons.find((s) => s.id === selSurgId) || null;
   const selTpl  = templates.find((t) => t.id === selTplId) || null;
   const gt      = (id) => templates.find((t) => t.id === id);
-  const sc      = SPEC_COLOR[selSurg?.specialty] || "#888";
+  const sc      = selSurg?.color || SPEC_COLOR[selSurg?.specialty] || "#888";
   const procIds = selSurg ? Object.keys(selSurg.procedurePrefs) : [];
   const activePref = selSurg?.procedurePrefs[selProcTab];
   const activeTpl  = gt(selProcTab);
@@ -174,21 +181,45 @@ export default function SurgeonsTab({
   if (isMobile && !selSurgId) {
     return (
       <div style={{ height: "calc(100dvh - 112px)", overflowY: "auto", paddingBottom: 80 }}>
-        <div style={{ padding: "8px 14px", borderBottom: "1px solid #1e1e2e", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: 8, letterSpacing: "2px", color: "#444", textTransform: "uppercase" }}>Surgeons</span>
-          <Btn small color="#34a876" onClick={() => setShowAddSurg(true)} style={{ padding: "2px 7px", fontSize: 9 }}>+ Add</Btn>
-        </div>
-        {surgeons.map((s) => { const sc2 = SPEC_COLOR[s.specialty] || "#888"; return (
-          <div key={s.id} onClick={() => { setSelSurgId(s.id); setSurgView("surgeon"); const tids = Object.keys(s.procedurePrefs); if (tids.length) { setSelProcTab(tids[0]); setPrefSection("sets"); } }} style={{ padding: "12px 14px", borderBottom: "1px solid #161620", cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: "50%", background: sc2 + "33", border: "2px solid " + sc2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: sc2, fontWeight: 700, flexShrink: 0 }}>{s.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#ddd8cc" }}>{s.name}</div>
-              <div style={{ fontSize: 11, color: sc2, fontStyle: "italic" }}>{s.specialty}</div>
-              <div style={{ fontSize: 10, color: "#333" }}>{Object.keys(s.procedurePrefs).length} profiles · {s.facility}</div>
-            </div>
-            <span style={{ color: "#333", fontSize: 18 }}>›</span>
+        <div style={{ padding: "8px 14px", borderBottom: "1px solid #1e1e2e" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <span style={{ fontSize: 8, letterSpacing: "2px", color: "#444", textTransform: "uppercase" }}>Surgeons</span>
+            <Btn small color="#34a876" onClick={() => setShowAddSurg(true)} style={{ padding: "2px 7px", fontSize: 9 }}>+ Add</Btn>
           </div>
-        ); })}
+          <div style={{ display: "flex", gap: 5 }}>
+            {[["name","A–Z"],["hospital","Hospital"]].map(([opt, lbl]) => (
+              <button key={opt} onClick={() => setSurgSort(opt)} style={{ padding: "3px 10px", fontSize: 9, background: surgSort === opt ? "#1e1e2e" : "transparent", border: "1px solid " + (surgSort === opt ? "#2a2a3e" : "#1a1a28"), borderRadius: 5, color: surgSort === opt ? "#aaa" : "#444", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.5px" }}>{lbl}</button>
+            ))}
+          </div>
+        </div>
+        {sortedSurgeons.map((s) => {
+          const sc2 = s.color || SPEC_COLOR[s.specialty] || "#888";
+          if (confirmDeleteSurgId === s.id) {
+            return (
+              <div key={s.id} style={{ padding: "10px 14px", borderBottom: "1px solid #161620", background: "#1e0a0a" }}>
+                <div style={{ fontSize: 11, color: "#e05060", marginBottom: 8 }}>Delete {s.name}?</div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => { setSurgeons((p) => p.filter((x) => x.id !== s.id)); if (selSurgId === s.id) setSelSurgId(null); setConfirmDeleteSurgId(null); }} style={{ flex: 1, padding: "6px 0", background: "#e05060", border: "none", borderRadius: 6, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Delete</button>
+                  <button onClick={() => setConfirmDeleteSurgId(null)} style={{ flex: 1, padding: "6px 0", background: "#1e1e2e", border: "1px solid #2a2a3e", borderRadius: 6, color: "#aaa", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+                </div>
+              </div>
+            );
+          }
+          return (
+            <div key={s.id} style={{ padding: "12px 14px", borderBottom: "1px solid #161620", display: "flex", alignItems: "center", gap: 10 }}>
+              <div onClick={() => { setSelSurgId(s.id); setSurgView("surgeon"); const tids = Object.keys(s.procedurePrefs); if (tids.length) { setSelProcTab(tids[0]); setPrefSection("sets"); } }} style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, cursor: "pointer" }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: sc2 + "33", border: "2px solid " + sc2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: sc2, fontWeight: 700, flexShrink: 0 }}>{s.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#ddd8cc" }}>{s.name}</div>
+                  <div style={{ fontSize: 11, color: sc2, fontStyle: "italic" }}>{s.specialty}</div>
+                  <div style={{ fontSize: 10, color: "#333" }}>{Object.keys(s.procedurePrefs).length} profiles · {s.facility}</div>
+                </div>
+              </div>
+              <button onClick={(e) => { e.stopPropagation(); setConfirmDeleteSurgId(s.id); }} style={{ background: "none", border: "none", color: "#2a2a3e", cursor: "pointer", fontSize: 20, padding: "0 4px", flexShrink: 0, lineHeight: 1 }} onTouchStart={(e) => (e.currentTarget.style.color = "#e05060")} onTouchEnd={(e) => (e.currentTarget.style.color = "#2a2a3e")}>×</button>
+              <span style={{ color: "#333", fontSize: 18 }}>›</span>
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -212,12 +243,19 @@ export default function SurgeonsTab({
     <div style={{ display: "flex", height: "calc(100dvh - 122px)", overflow: "hidden" }}>
       {/* Left sidebar */}
       <div style={{ width: 170, background: "#111119", borderRight: "1px solid #1e1e2e", display: "flex", flexDirection: "column", overflow: "hidden", flexShrink: 0 }}>
-        <div style={{ padding: "8px 10px", borderBottom: "1px solid #1e1e2e", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 8, letterSpacing: "2px", color: "#444", textTransform: "uppercase" }}>Surgeons</span>
-          <Btn small color="#34a876" onClick={() => setShowAddSurg(true)} style={{ padding: "2px 7px", fontSize: 9 }}>+ Add</Btn>
+        <div style={{ padding: "8px 10px 0", borderBottom: "1px solid #1e1e2e" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+            <span style={{ fontSize: 8, letterSpacing: "2px", color: "#444", textTransform: "uppercase" }}>Surgeons</span>
+            <Btn small color="#34a876" onClick={() => setShowAddSurg(true)} style={{ padding: "2px 7px", fontSize: 9 }}>+ Add</Btn>
+          </div>
+          <div style={{ display: "flex", gap: 4, paddingBottom: 6 }}>
+            {[["name","A–Z"],["hospital","Hospital"]].map(([opt, lbl]) => (
+              <button key={opt} onClick={() => setSurgSort(opt)} style={{ flex: 1, padding: "2px 0", fontSize: 8, background: surgSort === opt ? "#1e1e2e" : "transparent", border: "1px solid " + (surgSort === opt ? "#2a2a3e" : "#1a1a28"), borderRadius: 4, color: surgSort === opt ? "#aaa" : "#444", cursor: "pointer", fontFamily: "inherit", textTransform: "uppercase", letterSpacing: "0.5px" }}>{lbl}</button>
+            ))}
+          </div>
         </div>
         <div style={{ overflowY: "auto", flex: 1 }}>
-          {surgeons.map((s) => { const sc2 = SPEC_COLOR[s.specialty] || "#888"; const isSel = selSurgId === s.id && surgView === "surgeon"; return (
+          {sortedSurgeons.map((s) => { const sc2 = s.color || SPEC_COLOR[s.specialty] || "#888"; const isSel = selSurgId === s.id && surgView === "surgeon"; return (
             <div key={s.id} style={{ borderBottom: "1px solid #161620", background: isSel ? "#161628" : "transparent", borderLeft: "3px solid " + (isSel ? sc2 : "transparent") }}>
               {confirmDeleteSurgId === s.id
                 ? <div style={{ padding: "8px 10px", background: "#1e0a0a" }}>

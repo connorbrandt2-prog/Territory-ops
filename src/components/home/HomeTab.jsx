@@ -9,9 +9,11 @@ export default function HomeTab({ u, me, TODAY, tomorrowCases, todayCases, mySet
   return (
     <div style={{ padding: "16px 16px 0" }}>
       {/* Greeting */}
+      <div style={{ textAlign: "center", marginBottom: 8 }}>
+        <div style={{ fontSize: 10, color: "#666", letterSpacing: "2px", textTransform: "uppercase" }}>{TODAY.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</div>
+      </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22 }}>
         <div>
-          <div style={{ fontSize: 10, color: "#444", letterSpacing: "2px", textTransform: "uppercase", marginBottom: 3 }}>{TODAY.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</div>
           <div style={{ fontSize: 22, fontWeight: 700, color: "#ddd8cc" }}>Good morning, {me.name.split(" ")[0]}</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>

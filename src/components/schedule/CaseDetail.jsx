@@ -90,14 +90,6 @@ export default function CaseDetail({
       </Card>
 
       <Card style={{ marginBottom: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
-          <div onClick={() => togRet(selCase.id)} style={{ width: 17, height: 17, borderRadius: 4, border: "2px solid " + (selCase.returned ? "#34a876" : "#2a2a3e"), background: selCase.returned ? "#34a876" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, color: "#fff", cursor: "pointer", flexShrink: 0 }}>{selCase.returned ? "✓" : ""}</div>
-          <span style={{ flex: 1, fontSize: 12, color: selCase.returned ? "#7fe0aa" : "#aaa" }}>Sets returned and checked in</span>
-          <AcPick value={selCase.checklistAssignees?.setsReturned || null} onChange={(v) => upCase(selCase.id, (c) => ({ ...c, checklistAssignees: { ...c.checklistAssignees, setsReturned: v } }))} nullable />
-        </div>
-      </Card>
-
-      <Card style={{ marginBottom: 10 }}>
         <Lbl>Case Notes</Lbl>
         <textarea value={selCase.caseNotes || ""} onChange={(e) => upCase(selCase.id, (c) => ({ ...c, caseNotes: e.target.value }))} placeholder="Add notes for the team — check-in updates, special instructions, questions..." rows={3} style={{ width: "100%", padding: "8px 10px", background: "#0d0d14", border: "1px solid #2a2a3e", borderRadius: 7, color: "#ddd8cc", fontFamily: "inherit", fontSize: 12, outline: "none", resize: "vertical", boxSizing: "border-box", lineHeight: 1.6 }} />
         {selCase.caseNotes && <div style={{ fontSize: 9, color: "#444", marginTop: 6, textAlign: "right", letterSpacing: "0.5px" }}>Tap to edit · visible to all reps</div>}
